@@ -1,0 +1,17 @@
+[project]
+name = "bookmarker"
+version = "0.1.0"
+description = "A CLI tool to manage the online articles you want to read. Too much content and too little time? Bookmarker helps you pick what to read."
+readme = "README.md"
+authors = [
+    { name = "Kishan Patel", email = "kishanpatel789@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+bookmarker = "bookmarker:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
