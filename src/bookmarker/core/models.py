@@ -46,11 +46,6 @@ class Artifact(SQLModel, table=True):
         },
     )
 
-    @classmethod
-    def create(cls, **kwargs):
-        artifact = cls(**kwargs)
-        return artifact
-
 
 class Tag(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -70,7 +65,7 @@ class Tag(SQLModel, table=True):
     model_config = ConfigDict(validate_assignment=True)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     from sqlmodel import Session, create_engine
 
     engine = create_engine("sqlite:///bookmarker.sqlite", echo=True)
