@@ -33,7 +33,7 @@ class Artifact(SQLModel, table=True):
     notes: str | None = None
     content_raw: str | None = None
     content_summary: str | None = None
-    created_at: datetime = datetime.now(timezone.utc)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime | None = None
 
     tags: list["Tag"] = Relationship(
@@ -43,11 +43,6 @@ class Artifact(SQLModel, table=True):
             "lazy": "selectin",
         },
     )
-
-    def __init__(self, **data):
-        super().__init__(**data)
-        if not hasattr(self, "tags") or self.tags is None:
-            self.tags = []
 
     @classmethod
     def create(cls, **kwargs):
