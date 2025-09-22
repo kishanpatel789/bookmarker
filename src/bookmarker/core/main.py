@@ -1,7 +1,8 @@
-from sqlmodel import Session
+import logging
+
 from trafilatura import extract, fetch_url
 
-from .database import create_db_and_tables, engine
+from .database import create_db_and_tables, get_session
 from .models import Artifact, ArtifactTypeEnum
 
 
@@ -12,7 +13,7 @@ def add_artifact(title, url, artifact_type=ArtifactTypeEnum.ARTICLE):
         artifact_type=artifact_type,
     )
 
-    with Session(engine) as session:
+    with get_session() as session:
         session.add(artifact)
         session.commit()
         session.refresh(artifact)
@@ -21,7 +22,7 @@ def add_artifact(title, url, artifact_type=ArtifactTypeEnum.ARTICLE):
 
 
 def get_content(artifact_id):
-    with Session(engine) as session:
+    with get_session() as session:
         artifact = session.get(Artifact, artifact_id)
         if artifact is None:
             return None
@@ -39,7 +40,7 @@ def get_content(artifact_id):
 
 
 def store_content(artifact_id, content):
-    with Session(engine) as session:
+    with get_session() as session:
         artifact = session.get(Artifact, artifact_id)
         if artifact is None:
             return None
@@ -56,12 +57,13 @@ def main():
 
 if __name__ == "__main__":
     # main()
-    url = "https://kpdata.dev/blog/python-slicing/"
 
+    # test ground
+    url = "https://kpdata.dev/blog/python-slicing/"
     artifact = add_artifact("Python Slicing", url)
     content = get_content(artifact.id)
     if content:
         store_content(artifact.id, content)
-        print(f"Content stored for artifact ID {artifact.id}")
+        logging.debug(f"Content stored for artifact ID {artifact.id}")
     else:
-        print("Failed to retrieve content.")
+        logging.debug("Failed to retrieve content.")
