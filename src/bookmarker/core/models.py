@@ -29,7 +29,9 @@ class Artifact(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     title: str
     url: str
-    artifact_type: ArtifactTypeEnum = Field(sa_column=enum_column(ArtifactTypeEnum))
+    artifact_type: ArtifactTypeEnum = Field(
+        default=ArtifactTypeEnum.ARTICLE, sa_column=enum_column(ArtifactTypeEnum)
+    )
     notes: str | None = None
     content_raw: str | None = None
     content_summary: str | None = None
@@ -43,11 +45,6 @@ class Artifact(SQLModel, table=True):
             "lazy": "selectin",
         },
     )
-
-    @classmethod
-    def create(cls, **kwargs):
-        artifact = cls(**kwargs)
-        return artifact
 
 
 class Tag(SQLModel, table=True):
@@ -66,3 +63,24 @@ class Tag(SQLModel, table=True):
         return value
 
     model_config = ConfigDict(validate_assignment=True)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    from sqlmodel import Session, create_engine
+
+    engine = create_engine("sqlite:///bookmarker.sqlite", echo=True)
+    SQLModel.metadata.create_all(engine)
+
+    tag_python = Tag(name="python")
+    tag_cloud = Tag(name="cloud")
+    artifact = Artifact(
+        title="Test Article",
+        url="https://example.com",
+        notes="This seems interesting",
+        tags=[tag_python, tag_cloud],
+    )
+
+    with Session(engine) as session:
+        session.add(artifact)
+        session.commit()
+        session.refresh(artifact)
