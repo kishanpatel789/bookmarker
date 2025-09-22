@@ -1,0 +1,11 @@
+from decouple import config
+from sqlmodel import SQLModel, create_engine
+
+DATABASE_URL = config("DATABASE_URL")
+DEBUG = config("DEBUG", cast=bool, default=False)
+
+engine = create_engine(DATABASE_URL, echo=DEBUG)
+
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
