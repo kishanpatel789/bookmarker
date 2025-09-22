@@ -1,12 +1,25 @@
 import logging
 
+from sqlmodel import select
 from trafilatura import extract, fetch_url
 
 from .database import create_db_and_tables, get_session
+from .exceptions import ArtifactNotFoundError
 from .models import Artifact, ArtifactTypeEnum
 
 
-def add_artifact(title, url, artifact_type=ArtifactTypeEnum.ARTICLE):
+def add_artifact(
+    title: str, url: str, artifact_type: ArtifactTypeEnum = ArtifactTypeEnum.ARTICLE
+) -> Artifact:
+    with get_session() as session:
+        statement = select(Artifact).where(Artifact.url == url)
+        existing_artifact = session.exec(statement).first()
+        if existing_artifact:
+            logging.info(
+                f"Artifact with URL '{url}' already exists with ID {existing_artifact.id}."
+            )
+            return existing_artifact
+
     artifact = Artifact(
         title=title,
         url=url,
@@ -21,11 +34,16 @@ def add_artifact(title, url, artifact_type=ArtifactTypeEnum.ARTICLE):
     return artifact
 
 
-def get_content(artifact_id):
+def get_artifact(artifact_id: int) -> Artifact:
     with get_session() as session:
         artifact = session.get(Artifact, artifact_id)
         if artifact is None:
-            return None
+            raise ArtifactNotFoundError(f"Artifact with ID {artifact_id} not found.")
+    return artifact
+
+
+def get_content(artifact_id: int) -> str | None:
+    artifact = get_artifact(artifact_id)
 
     downloaded = fetch_url(artifact.url)
     if downloaded is not None:
@@ -39,11 +57,10 @@ def get_content(artifact_id):
     return None
 
 
-def store_content(artifact_id, content):
+def store_content(artifact_id: int, content: str) -> Artifact:
+    artifact = get_artifact(artifact_id)
+
     with get_session() as session:
-        artifact = session.get(Artifact, artifact_id)
-        if artifact is None:
-            return None
         artifact.content_raw = content
         session.add(artifact)
         session.commit()
