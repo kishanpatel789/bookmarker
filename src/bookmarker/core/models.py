@@ -27,8 +27,8 @@ class ArtifactTagLink(SQLModel, table=True):
 
 class Artifact(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    title: str
-    url: str
+    title: str = Field(index=True, min_length=1, max_length=200)
+    url: str = Field(index=True, min_length=5)
     artifact_type: ArtifactTypeEnum = Field(
         default=ArtifactTypeEnum.ARTICLE, sa_column=enum_column(ArtifactTypeEnum)
     )
@@ -49,7 +49,7 @@ class Artifact(SQLModel, table=True):
 
 class Tag(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    name: str = Field(min_length=1, max_length=20)
+    name: str = Field(index=True, min_length=1, max_length=20)
 
     artifacts: list["Artifact"] = Relationship(
         back_populates="tags", link_model=ArtifactTagLink
