@@ -12,7 +12,6 @@ def db_repo() -> DatabaseRepository:
 
 
 def test_add_artifact(db_repo):
-    breakpoint()
     artifact = add_artifact(db_repo, title="Test Article", url="https://example.com")
 
     assert artifact.id is not None
