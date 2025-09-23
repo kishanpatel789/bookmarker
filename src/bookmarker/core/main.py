@@ -3,6 +3,7 @@ import logging
 from trafilatura import extract, fetch_url
 
 from .database import DatabaseRepository, create_db_and_tables
+from .exceptions import ArtifactNotFoundError, ContentFetchError
 from .models import Artifact, ArtifactTypeEnum
 
 
@@ -31,17 +32,20 @@ def add_artifact(
 
 def get_content(repo: DatabaseRepository, artifact_id: int) -> str | None:
     artifact = repo.get(artifact_id)
+    if artifact is None:
+        raise ArtifactNotFoundError(f"Artifact with ID {artifact_id} not found.")
 
     downloaded = fetch_url(artifact.url)
-    if downloaded is not None:
-        return extract(
-            downloaded,
-            include_images=True,
-            include_tables=True,
-            include_links=True,
-            output_format="markdown",
-        )
-    return None
+    if downloaded is None:
+        raise ContentFetchError(f"Failed to fetch content from URL: {artifact.url}")
+
+    return extract(
+        downloaded,
+        include_images=True,
+        include_tables=True,
+        include_links=True,
+        output_format="markdown",
+    )
 
 
 def store_content(repo: DatabaseRepository, artifact_id: int, content: str) -> Artifact:
@@ -53,10 +57,8 @@ def get_and_store_content(
     repo: DatabaseRepository, artifact_id: int
 ) -> Artifact | None:
     content = get_content(repo, artifact_id)
-    if content:
-        artifact = store_content(repo, artifact_id, content)
-        return artifact
-    return None
+    artifact = store_content(repo, artifact_id, content)
+    return artifact
 
 
 def main():
