@@ -11,6 +11,7 @@ dependencies = [
     "alembic>=1.16.5",
     "python-decouple>=3.8",
     "sqlmodel>=0.0.25",
+    "trafilatura>=2.0.0",
 ]
 
 [project.scripts]
@@ -34,3 +35,9 @@ lint = "uv tool run ruff check ."
 format = "uv tool run ruff format ."
 tc = "uv tool run ty check ."
 db_upgrade = "uv run alembic upgrade head"
+
+
+[tool.pytest.ini_options]
+markers = [
+    "focus: Run focused tests"
+]
