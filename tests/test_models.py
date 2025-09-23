@@ -6,8 +6,8 @@ from sqlmodel import Session, SQLModel, create_engine, select
 from src.bookmarker.core.models import Artifact, ArtifactTypeEnum, Tag
 
 
-@pytest.fixture()
-def engine(scope="function"):
+@pytest.fixture(scope="function")
+def engine():
     engine = create_engine("sqlite:///:memory:", echo=True)
     SQLModel.metadata.create_all(engine)
     yield engine

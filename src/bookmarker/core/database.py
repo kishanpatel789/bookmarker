@@ -42,17 +42,17 @@ class DatabaseRepository:
     def delete(self, artifact_id: int) -> None:
         with Session(self._engine) as session:
             artifact = session.get(Artifact, artifact_id)
-            if artifact is not None:
-                session.delete(artifact)
-                session.commit()
-            else:
+            if artifact is None:
                 raise ArtifactNotFoundError(
                     f"Artifact with ID {artifact_id} not found."
                 )
+            session.delete(artifact)
+            session.commit()
 
     def store_content_raw(self, artifact_id: int, content: str) -> Artifact:
         artifact = self.get(artifact_id)
-
+        if artifact is None:
+            raise ArtifactNotFoundError(f"Artifact with ID {artifact_id} not found.")
         with Session(self._engine) as session:
             artifact.content_raw = content
             session.add(artifact)
