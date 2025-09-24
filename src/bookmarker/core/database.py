@@ -8,11 +8,6 @@ from .exceptions import ArtifactNotFoundError
 from .models import Artifact
 
 
-def create_db_and_tables():
-    engine = create_engine(DATABASE_URL, echo=DEBUG)
-    SQLModel.metadata.create_all(engine)
-
-
 class DatabaseRepository:
     def __init__(self, engine: Engine) -> None:
         self._engine = engine
@@ -59,3 +54,17 @@ class DatabaseRepository:
             session.commit()
             session.refresh(artifact)
         return artifact
+
+
+def get_engine() -> Engine:
+    return create_engine(DATABASE_URL, echo=DEBUG)
+
+
+def get_repo() -> DatabaseRepository:
+    engine = get_engine()
+    return DatabaseRepository(engine)
+
+
+def create_db_and_tables() -> None:
+    engine = get_engine()
+    SQLModel.metadata.create_all(engine)

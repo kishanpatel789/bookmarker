@@ -1,10 +1,14 @@
 import logging
 
-from trafilatura import extract, fetch_url
-
 from .database import DatabaseRepository, create_db_and_tables
-from .exceptions import ArtifactNotFoundError, ContentFetchError
+from .exceptions import ArtifactNotFoundError
+from .fetchers import ContentFetcher, TrafilaturaFetcher, YouTubeFetcher
 from .models import Artifact, ArtifactTypeEnum
+
+FETCHERS = {
+    ArtifactTypeEnum.ARTICLE: TrafilaturaFetcher(),
+    ArtifactTypeEnum.YOUTUBE: YouTubeFetcher(),
+}
 
 
 def add_artifact(
@@ -35,17 +39,8 @@ def get_content(repo: DatabaseRepository, artifact_id: int) -> str | None:
     if artifact is None:
         raise ArtifactNotFoundError(f"Artifact with ID {artifact_id} not found.")
 
-    downloaded = fetch_url(artifact.url)
-    if downloaded is None:
-        raise ContentFetchError(f"Failed to fetch content from URL: {artifact.url}")
-
-    return extract(
-        downloaded,
-        include_images=True,
-        include_tables=True,
-        include_links=True,
-        output_format="markdown",
-    )
+    fetcher: ContentFetcher = FETCHERS.get(artifact.artifact_type)
+    return fetcher.fetch(artifact.url)
 
 
 def store_content(repo: DatabaseRepository, artifact_id: int, content: str) -> Artifact:
@@ -69,6 +64,9 @@ if __name__ == "__main__":
     # main()
 
     # test ground
+    from .database import get_repo
+
+    repo = get_repo()
     url = "https://kpdata.dev/blog/python-slicing/"
-    artifact = add_artifact("Python Slicing", url)
-    get_and_store_content(artifact.id)
+    artifact = add_artifact(repo, "Python Slicing", url)
+    get_and_store_content(repo, artifact.id)
