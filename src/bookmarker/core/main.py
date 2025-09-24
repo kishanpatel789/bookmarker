@@ -1,70 +1,63 @@
 import logging
 
-from sqlmodel import select
 from trafilatura import extract, fetch_url
 
-from .database import create_db_and_tables, get_session
-from .exceptions import ArtifactNotFoundError
+from .database import DatabaseRepository, create_db_and_tables
+from .exceptions import ArtifactNotFoundError, ContentFetchError
 from .models import Artifact, ArtifactTypeEnum
 
 
 def add_artifact(
-    title: str, url: str, artifact_type: ArtifactTypeEnum = ArtifactTypeEnum.ARTICLE
+    repo: DatabaseRepository,
+    title: str,
+    url: str,
+    artifact_type: ArtifactTypeEnum = ArtifactTypeEnum.ARTICLE,
 ) -> Artifact:
-    with get_session() as session:
-        statement = select(Artifact).where(Artifact.url == url)
-        existing_artifact = session.exec(statement).first()
-        if existing_artifact:
-            logging.info(
-                f"Artifact with URL '{url}' already exists with ID {existing_artifact.id}."
-            )
-            return existing_artifact
+    existing_artifact = repo.get_by_url(url)
+    if existing_artifact is not None:
+        logging.info(
+            f"Artifact with URL '{url}' already exists with ID {existing_artifact.id}."
+        )
+        return existing_artifact
 
     artifact = Artifact(
         title=title,
         url=url,
         artifact_type=artifact_type,
     )
-
-    with get_session() as session:
-        session.add(artifact)
-        session.commit()
-        session.refresh(artifact)
+    repo.add(artifact)
 
     return artifact
 
 
-def get_artifact(artifact_id: int) -> Artifact:
-    with get_session() as session:
-        artifact = session.get(Artifact, artifact_id)
-        if artifact is None:
-            raise ArtifactNotFoundError(f"Artifact with ID {artifact_id} not found.")
-    return artifact
-
-
-def get_content(artifact_id: int) -> str | None:
-    artifact = get_artifact(artifact_id)
+def get_content(repo: DatabaseRepository, artifact_id: int) -> str | None:
+    artifact = repo.get(artifact_id)
+    if artifact is None:
+        raise ArtifactNotFoundError(f"Artifact with ID {artifact_id} not found.")
 
     downloaded = fetch_url(artifact.url)
-    if downloaded is not None:
-        return extract(
-            downloaded,
-            include_images=True,
-            include_tables=True,
-            include_links=True,
-            output_format="markdown",
-        )
-    return None
+    if downloaded is None:
+        raise ContentFetchError(f"Failed to fetch content from URL: {artifact.url}")
+
+    return extract(
+        downloaded,
+        include_images=True,
+        include_tables=True,
+        include_links=True,
+        output_format="markdown",
+    )
 
 
-def store_content(artifact_id: int, content: str) -> Artifact:
-    artifact = get_artifact(artifact_id)
+def store_content(repo: DatabaseRepository, artifact_id: int, content: str) -> Artifact:
+    artifact = repo.store_content_raw(artifact_id, content)
+    return artifact
 
-    with get_session() as session:
-        artifact.content_raw = content
-        session.add(artifact)
-        session.commit()
-        session.refresh(artifact)
+
+def get_and_store_content(
+    repo: DatabaseRepository, artifact_id: int
+) -> Artifact | None:
+    content = get_content(repo, artifact_id)
+    artifact = store_content(repo, artifact_id, content)
     return artifact
 
 
@@ -78,9 +71,4 @@ if __name__ == "__main__":
     # test ground
     url = "https://kpdata.dev/blog/python-slicing/"
     artifact = add_artifact("Python Slicing", url)
-    content = get_content(artifact.id)
-    if content:
-        store_content(artifact.id, content)
-        logging.debug(f"Content stored for artifact ID {artifact.id}")
-    else:
-        logging.debug("Failed to retrieve content.")
+    get_and_store_content(artifact.id)
