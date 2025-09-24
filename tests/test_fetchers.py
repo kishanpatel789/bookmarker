@@ -34,6 +34,6 @@ def test_trafilaturafetcher_fetch_failure(mock_fetch_url):
 
     fetcher = TrafilaturaFetcher()
 
-    with pytest.raises(ContentFetchError) as exc:
+    with pytest.raises(ContentFetchError) as excinfo:
         fetcher.fetch("https://example.com")
-    assert "Failed to fetch content from URL" in str(exc.value)
+    assert "Failed to fetch content from URL" in str(excinfo.value)
