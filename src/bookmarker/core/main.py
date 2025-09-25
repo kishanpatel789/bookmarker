@@ -6,8 +6,8 @@ from .fetchers import ContentFetcher, TrafilaturaFetcher, YouTubeFetcher
 from .models import Artifact, ArtifactTypeEnum
 
 FETCHERS = {
-    ArtifactTypeEnum.ARTICLE: TrafilaturaFetcher(),
-    ArtifactTypeEnum.YOUTUBE: YouTubeFetcher(),
+    ArtifactTypeEnum.ARTICLE: TrafilaturaFetcher,
+    ArtifactTypeEnum.YOUTUBE: YouTubeFetcher,
 }
 
 
@@ -39,7 +39,7 @@ def get_content(repo: DatabaseRepository, artifact_id: int) -> str | None:
     if artifact is None:
         raise ArtifactNotFoundError(f"Artifact with ID {artifact_id} not found.")
 
-    fetcher: ContentFetcher = FETCHERS.get(artifact.artifact_type)
+    fetcher: ContentFetcher = FETCHERS[artifact.artifact_type]()
     return fetcher.fetch(artifact.url)
 
 

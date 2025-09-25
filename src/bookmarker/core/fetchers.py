@@ -1,4 +1,4 @@
-from abc import ABC, abstractclassmethod
+from abc import ABC, abstractmethod
 
 from trafilatura import extract, fetch_url
 
@@ -6,7 +6,7 @@ from .exceptions import ContentFetchError
 
 
 class ContentFetcher(ABC):
-    @abstractclassmethod
+    @abstractmethod
     def fetch(self, url: str) -> str:
         """Fetch content from url and return parsed content as string."""
 

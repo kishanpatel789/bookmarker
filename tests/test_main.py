@@ -1,7 +1,8 @@
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 
+from src.bookmarker.core.exceptions import ArtifactNotFoundError
 from src.bookmarker.core.main import (
     FETCHERS,
     get_and_store_content,
@@ -46,10 +47,11 @@ def test_add_existing_artifact(db_repo, add_article):
 def test_get_article_content_with_mocked_fetcher(db_repo, add_article, monkeypatch):
     artifact = add_article
 
-    mock_fetcher = Mock()
+    mock_fetcher = create_autospec(FETCHERS[ArtifactTypeEnum.ARTICLE], instance=True)
     mock_fetcher.fetch.return_value = "Test Content"
+    mock_class = Mock(return_value=mock_fetcher)
 
-    monkeypatch.setitem(FETCHERS, ArtifactTypeEnum.ARTICLE, mock_fetcher)
+    monkeypatch.setitem(FETCHERS, ArtifactTypeEnum.ARTICLE, mock_class)
 
     content = get_content(db_repo, artifact.id)
 
@@ -58,9 +60,8 @@ def test_get_article_content_with_mocked_fetcher(db_repo, add_article, monkeypat
 
 
 def test_get_content_article_not_found(db_repo):
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(ArtifactNotFoundError, match="Artifact with ID 99 not found."):
         get_content(db_repo, artifact_id=99)
-    assert "Artifact with ID 99 not found." in str(excinfo.value)
 
 
 def test_store_content(db_repo, add_article):
