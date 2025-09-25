@@ -72,8 +72,7 @@ if __name__ == "__main__":  # pragma: no cover
 
     # test ground
     # from .database import get_repo
-#
-# repo = get_repo()
-# url = "https://kpdata.dev/blog/python-slicing/"
-# artifact = get_or_create_artifact(repo, "Python Slicing", url)
-# get_and_store_content(repo, artifact.id)
+    # repo = get_repo()
+    # url = "https://kpdata.dev/blog/python-slicing/"
+    # artifact = get_or_create_artifact(repo, "Python Slicing", url)
+    # get_and_store_content(repo, artifact.id)

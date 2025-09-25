@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.16.5",
+    "pydantic-ai-slim[openai]>=1.0.10",
     "python-decouple>=3.8",
     "sqlmodel>=0.0.25",
     "trafilatura>=2.0.0",
