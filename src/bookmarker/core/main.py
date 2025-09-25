@@ -1,6 +1,6 @@
 import logging
 
-from .database import DatabaseRepository, create_db_and_tables
+from .database import DatabaseRepository
 from .exceptions import ArtifactNotFoundError
 from .fetchers import ContentFetcher, TrafilaturaFetcher, YouTubeFetcher
 from .models import Artifact, ArtifactTypeEnum
@@ -11,7 +11,7 @@ FETCHERS = {
 }
 
 
-def add_artifact(
+def get_or_create_artifact(
     repo: DatabaseRepository,
     title: str,
     url: str,
@@ -57,7 +57,8 @@ def get_and_store_content(
 
 
 def main():
-    create_db_and_tables()
+    repo = get_repo()
+    repo.create_db_and_tables()
 
 
 if __name__ == "__main__":  # pragma: no cover
@@ -68,5 +69,5 @@ if __name__ == "__main__":  # pragma: no cover
 
     repo = get_repo()
     url = "https://kpdata.dev/blog/python-slicing/"
-    artifact = add_artifact(repo, "Python Slicing", url)
+    artifact = get_or_create_artifact(repo, "Python Slicing", url)
     get_and_store_content(repo, artifact.id)

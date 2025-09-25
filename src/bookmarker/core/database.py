@@ -1,6 +1,5 @@
 from typing import Sequence
 
-from sqlalchemy import Engine  # for typing
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from .config import DATABASE_URL, DEBUG
@@ -9,8 +8,11 @@ from .models import Artifact
 
 
 class DatabaseRepository:
-    def __init__(self, engine: Engine) -> None:
-        self._engine = engine
+    def __init__(self, database_url: str, echo: bool = False) -> None:
+        self._engine = create_engine(database_url, echo=echo)
+
+    def create_db_and_tables(self) -> None:
+        SQLModel.metadata.create_all(self._engine)
 
     def add(self, artifact: Artifact) -> None:
         with Session(self._engine) as session:
@@ -20,19 +22,16 @@ class DatabaseRepository:
 
     def list(self) -> Sequence[Artifact]:
         with Session(self._engine) as session:
-            artifacts = session.exec(select(Artifact)).all()
-        return artifacts
+            return session.exec(select(Artifact)).all()
 
     def get(self, artifact_id: int) -> Artifact | None:
         with Session(self._engine) as session:
-            artifact = session.get(Artifact, artifact_id)
-        return artifact
+            return session.get(Artifact, artifact_id)
 
     def get_by_url(self, url: str) -> Artifact | None:
         with Session(self._engine) as session:
             statement = select(Artifact).where(Artifact.url == url)
-            artifact = session.exec(statement).first()
-        return artifact
+            return session.exec(statement).first()
 
     def delete(self, artifact_id: int) -> None:
         with Session(self._engine) as session:
@@ -56,15 +55,5 @@ class DatabaseRepository:
         return artifact
 
 
-def get_engine() -> Engine:
-    return create_engine(DATABASE_URL, echo=DEBUG)
-
-
 def get_repo() -> DatabaseRepository:
-    engine = get_engine()
-    return DatabaseRepository(engine)
-
-
-def create_db_and_tables() -> None:
-    engine = get_engine()
-    SQLModel.metadata.create_all(engine)
+    return DatabaseRepository(database_url=DATABASE_URL, echo=DEBUG)

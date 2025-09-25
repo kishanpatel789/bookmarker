@@ -4,9 +4,9 @@ import pytest
 
 from src.bookmarker.core.main import (
     FETCHERS,
-    add_artifact,
     get_and_store_content,
     get_content,
+    get_or_create_artifact,
     store_content,
 )
 from src.bookmarker.core.models import ArtifactTypeEnum
@@ -14,7 +14,7 @@ from src.bookmarker.core.models import ArtifactTypeEnum
 
 @pytest.fixture
 def add_article(db_repo):
-    artifact = add_artifact(
+    artifact = get_or_create_artifact(
         db_repo,
         title="Test Article",
         url="https://example.com",
@@ -34,7 +34,7 @@ def test_add_artifact(db_repo, add_article):
 
 def test_add_existing_artifact(db_repo, add_article):
     artifact1 = add_article
-    artifact2 = add_artifact(
+    artifact2 = get_or_create_artifact(
         db_repo, title="Test Article Duplicate", url="https://example.com"
     )
 

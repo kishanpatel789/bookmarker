@@ -1,11 +1,11 @@
 import pytest
 
-from src.bookmarker.core.database import DatabaseRepository, SQLModel, create_engine
+from src.bookmarker.core.database import DatabaseRepository
 
 
 @pytest.fixture()
 def db_repo() -> DatabaseRepository:
-    engine = create_engine("sqlite:///:memory:", echo=False)
-    SQLModel.metadata.create_all(engine)
-    yield DatabaseRepository(engine)
-    engine.dispose()
+    repo = DatabaseRepository(database_url="sqlite:///:memory:", echo=True)
+    repo.create_db_and_tables()
+    yield repo
+    repo._engine.dispose()
