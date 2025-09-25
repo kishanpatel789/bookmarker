@@ -41,3 +41,6 @@ db_upgrade = "uv run alembic upgrade head"
 markers = [
     "focus: Run focused tests"
 ]
+
+[tool.ty.src]
+exclude = ["migrations"]
