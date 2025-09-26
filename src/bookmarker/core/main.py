@@ -44,8 +44,8 @@ def get_content(repo: DatabaseRepository, artifact_id: int) -> str | None:
         fetcher: ContentFetcher = FETCHERS[artifact.artifact_type]()
         content = fetcher.fetch(artifact.url)
         return content
-    except ContentFetchError as e:
-        logging.error(f"Error fetching content for artifact ID {artifact_id}: {e}")
+    except ContentFetchError:
+        logging.error(f"Error fetching content for artifact ID {artifact_id}")
         raise
 
 
@@ -83,8 +83,8 @@ def get_content_summary(
     try:
         summary = summarizer.summarize(artifact.content_raw)
         return summary
-    except ContentSummaryError as e:
-        logging.error(f"Error summarizing content for artifact ID {artifact_id}: {e}")
+    except ContentSummaryError:
+        logging.exception(f"Error summarizing content for artifact ID {artifact_id}")
         raise
 
 

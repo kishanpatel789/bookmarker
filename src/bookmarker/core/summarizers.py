@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 
 from pydantic_ai import Agent
+from pydantic_ai.exceptions import AgentRunError, UserError
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from .config import OPENAI_API_KEY, OPENAI_MODEL_NAME
-from .exceptions import InvalidContentError
+from .exceptions import ContentSummaryError, InvalidContentError
 
 
 class ContentSummarizer(ABC):
@@ -19,7 +20,6 @@ class OpenAISummarizer(ContentSummarizer):
         model = OpenAIChatModel(model_name, provider=OpenAIProvider(api_key=api_key))
         self.agent = Agent(
             model,
-            deps_type=str,
             output_type=str,
             instructions=(
                 """
@@ -34,16 +34,18 @@ class OpenAISummarizer(ContentSummarizer):
             raise InvalidContentError(
                 "Content is empty or None. Run fetcher first to get raw content."
             )
-        else:
+        try:
             result = self.agent.run_sync(content)
             return result.output
+        except (AgentRunError, UserError) as e:
+            raise ContentSummaryError(f"Error during content summarization: {e}")
 
 
 def get_summarizer() -> ContentSummarizer:
     return OpenAISummarizer(api_key=OPENAI_API_KEY, model_name=OPENAI_MODEL_NAME)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     from .database import get_repo
 
     repo = get_repo()
