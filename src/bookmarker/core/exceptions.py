@@ -4,3 +4,7 @@ class ArtifactNotFoundError(Exception):
 
 class ContentFetchError(Exception):
     pass
+
+
+class InvalidContentError(Exception):
+    pass
