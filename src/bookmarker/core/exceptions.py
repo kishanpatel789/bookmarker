@@ -4,3 +4,11 @@ class ArtifactNotFoundError(Exception):
 
 class ContentFetchError(Exception):
     pass
+
+
+class InvalidContentError(Exception):
+    pass
+
+
+class ContentSummaryError(Exception):
+    pass
