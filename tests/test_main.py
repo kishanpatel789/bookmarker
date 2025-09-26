@@ -82,5 +82,7 @@ def test_get_and_store_content(mock_get_content, mock_store_content, db_repo):
     result = get_and_store_content(db_repo, 1)
 
     mock_get_content.assert_called_once_with(db_repo, 1)
-    mock_store_content.assert_called_once_with(db_repo, 1, "Test Content")
+    mock_store_content.assert_called_once_with(
+        db_repo, 1, "Test Content", content_type="raw"
+    )
     assert result is mock_artifact

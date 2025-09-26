@@ -39,6 +39,10 @@ class OpenAISummarizer(ContentSummarizer):
             return result.output
 
 
+def get_summarizer() -> ContentSummarizer:
+    return OpenAISummarizer(api_key=OPENAI_API_KEY, model_name=OPENAI_MODEL_NAME)
+
+
 if __name__ == "__main__":
     from .database import get_repo
 

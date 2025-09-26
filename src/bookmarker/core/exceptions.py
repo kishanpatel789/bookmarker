@@ -8,3 +8,7 @@ class ContentFetchError(Exception):
 
 class InvalidContentError(Exception):
     pass
+
+
+class ContentSummaryError(Exception):
+    pass
