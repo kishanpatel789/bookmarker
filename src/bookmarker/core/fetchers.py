@@ -15,21 +15,25 @@ class TrafilaturaFetcher(ContentFetcher):
     def get_content(self, url: str) -> str:
         downloaded = fetch_url(url)
         if downloaded is None:
-            raise ContentFetchError(f"Failed to fetch content from URL: {url}")
+            raise ContentFetchError(f"Failed to get content from URL: {url}")
+        return downloaded
 
-    def parse_content(self, content: str) -> str:
-        return extract(
+    def parse_content(self, url: str, content: str) -> str:
+        parsed = extract(
             content,
             include_images=True,
             include_tables=True,
             include_links=True,
             output_format="markdown",
         )
+        if parsed is None:
+            raise ContentFetchError(f"Failed to parse content from URL: {url}")
+        return parsed
 
     def fetch(self, url: str) -> str:
         content = self.get_content(url)
-        return self.parse_content(content)
+        return self.parse_content(url, content)
 
 
 class YouTubeFetcher(ContentFetcher):
-    def fetch(self, url: str) -> str: ...
+    def fetch(self, url: str) -> str | None: ...
