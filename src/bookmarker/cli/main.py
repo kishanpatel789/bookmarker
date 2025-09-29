@@ -16,12 +16,8 @@ class AppConfig(NamedTuple):
     error_console: Console
 
 
-@app.command()
-def init_db():
-    """Initializes the database."""
-    repo = get_repo()
-    repo.create_db_and_tables()
-    typer.echo("Database initialized.")
+def get_config(ctx: typer.Context) -> AppConfig:
+    return ctx.obj
 
 
 @app.callback()
@@ -36,26 +32,36 @@ def init(ctx: typer.Context):
 
 
 @app.command()
-def add(
+def init_db(ctx: typer.Context):
+    """Initializes the database."""
+    config = get_config(ctx)
+    try:
+        config.repo.create_db_and_tables()
+        config.console.print("[green]Database initialized.[/]")
+    except Exception as e:
+        config.error_console.print(f"Error initializing DB: {e}")
+
+
+@app.command(name="add")
+def add_artifacts(
     ctx: typer.Context,
     title: str,
     url: str,
     artifact_type: ArtifactTypeEnum = ArtifactTypeEnum.ARTICLE,
 ):
     """Adds an artifact with a title and URL."""
-    repo = ctx.obj.repo
+    config = get_config(ctx)
     artifact = get_or_create_artifact(
-        repo, title=title, url=url, artifact_type=artifact_type
+        config.repo, title=title, url=url, artifact_type=artifact_type
     )
+    config.console.print(f"[green]Artifact added:[/] {artifact.title} - {artifact.url}")
 
-    print(f"Artifact added: {artifact.title} - {artifact.url}")
 
-
-@app.command()
-def list(ctx: typer.Context):
+@app.command(name="list")
+def list_artifacts(ctx: typer.Context):
     """Lists all artifacts."""
-    repo = ctx.obj.repo
-    artifacts = repo.list()
+    config = get_config(ctx)
+    artifacts = config.repo.list()
     if artifacts:
         table = Table("Title", "URL", title="Artifacts")
         for artifact in artifacts:
