@@ -1,9 +1,19 @@
-import typer
+from typing import NamedTuple
 
-from ..core.database import get_repo
+import typer
+from rich.console import Console
+from rich.table import Table
+
+from ..core.database import DatabaseRepository, get_repo
 from ..core.main import ArtifactTypeEnum, get_or_create_artifact
 
 app = typer.Typer()
+
+
+class AppConfig(NamedTuple):
+    repo: DatabaseRepository
+    console: Console
+    error_console: Console
 
 
 @app.command()
@@ -17,7 +27,12 @@ def init_db():
 @app.callback()
 def init(ctx: typer.Context):
     repo = get_repo()
-    ctx.obj = repo
+    app_config = AppConfig(
+        repo=repo,
+        console=Console(),
+        error_console=Console(stderr=True, style="bold red"),
+    )
+    ctx.obj = app_config
 
 
 @app.command()
@@ -28,7 +43,7 @@ def add(
     artifact_type: ArtifactTypeEnum = ArtifactTypeEnum.ARTICLE,
 ):
     """Adds an artifact with a title and URL."""
-    repo = ctx.obj
+    repo = ctx.obj.repo
     artifact = get_or_create_artifact(
         repo, title=title, url=url, artifact_type=artifact_type
     )
@@ -39,7 +54,12 @@ def add(
 @app.command()
 def list(ctx: typer.Context):
     """Lists all artifacts."""
-    repo = ctx.obj
+    repo = ctx.obj.repo
     artifacts = repo.list()
-    for artifact in artifacts:
-        print(f"{artifact.id}: {artifact.title} - {artifact.url}")
+    if artifacts:
+        table = Table("Title", "URL", title="Artifacts")
+        for artifact in artifacts:
+            table.add_row(artifact.title, artifact.url)
+        ctx.obj.console.print(table)
+    else:
+        ctx.obj.error_console.print("No artifacts found.")
