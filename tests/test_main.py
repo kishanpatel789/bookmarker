@@ -2,11 +2,14 @@ from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 
-from src.bookmarker.core.exceptions import ArtifactNotFoundError
 from src.bookmarker.core.main import (
     FETCHERS,
+    ArtifactNotFoundError,
+    ContentFetchError,
+    ContentSummaryError,
     get_and_store_content,
     get_content,
+    get_content_summary,
     get_or_create_artifact,
     store_content,
 )
@@ -64,6 +67,17 @@ def test_get_content_article_not_found(db_repo):
         get_content(db_repo, artifact_id=99)
 
 
+def test_get_content_fetch_error(db_repo, add_article, monkeypatch):
+    artifact = add_article
+    mock_fetcher = create_autospec(FETCHERS[ArtifactTypeEnum.ARTICLE], instance=True)
+    mock_fetcher.fetch.side_effect = ContentFetchError()
+    mock_class = Mock(return_value=mock_fetcher)
+    monkeypatch.setitem(FETCHERS, ArtifactTypeEnum.ARTICLE, mock_class)
+
+    with pytest.raises(ContentFetchError):
+        get_content(db_repo, artifact.id)
+
+
 def test_store_content(db_repo, add_article):
     artifact = add_article
     updated_artifact = store_content(db_repo, artifact.id, "#Test header")
@@ -82,5 +96,37 @@ def test_get_and_store_content(mock_get_content, mock_store_content, db_repo):
     result = get_and_store_content(db_repo, 1)
 
     mock_get_content.assert_called_once_with(db_repo, 1)
-    mock_store_content.assert_called_once_with(db_repo, 1, "Test Content")
+    mock_store_content.assert_called_once_with(
+        db_repo, 1, "Test Content", content_type="raw"
+    )
     assert result is mock_artifact
+
+
+def test_get_content_summary(db_repo, add_article, monkeypatch):
+    artifact = add_article
+    artifact.content_raw = "This is article content."
+    monkeypatch.setattr(db_repo, "get", lambda x: artifact)
+
+    mock_summarizer = Mock()
+    mock_summarizer.summarize.return_value = "This is a summary."
+
+    result = get_content_summary(db_repo, mock_summarizer, artifact.id)
+
+    assert result == "This is a summary."
+    mock_summarizer.summarize.assert_called_once_with("This is article content.")
+
+
+def test_get_content_summary_article_not_found(db_repo):
+    mock_summarizer = Mock()
+    with pytest.raises(ArtifactNotFoundError, match="Artifact with ID 99 not found."):
+        get_content_summary(db_repo, mock_summarizer, artifact_id=99)
+    mock_summarizer.summarize.assert_not_called()
+
+
+def test_get_content_summary_summary_error(db_repo, add_article):
+    artifact = add_article
+    mock_summarizer = Mock()
+    mock_summarizer.summarize.side_effect = ContentSummaryError()
+
+    with pytest.raises(ContentSummaryError):
+        get_content_summary(db_repo, mock_summarizer, artifact.id)

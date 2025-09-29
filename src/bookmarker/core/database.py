@@ -54,6 +54,17 @@ class DatabaseRepository:
             session.refresh(artifact)
         return artifact
 
+    def store_content_summary(self, artifact_id: int, content: str) -> Artifact:
+        artifact = self.get(artifact_id)
+        if artifact is None:
+            raise ArtifactNotFoundError(f"Artifact with ID {artifact_id} not found.")
+        with Session(self._engine) as session:
+            artifact.content_summary = content
+            session.add(artifact)
+            session.commit()
+            session.refresh(artifact)
+        return artifact
+
 
 def get_repo() -> DatabaseRepository:
     return DatabaseRepository(database_url=DATABASE_URL, echo=DEBUG)
