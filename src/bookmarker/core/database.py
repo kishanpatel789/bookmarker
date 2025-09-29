@@ -1,10 +1,10 @@
 from typing import Sequence
 
-from sqlmodel import Session, SQLModel, create_engine, select
+from sqlmodel import Session, create_engine, select
 
 from .config import DATABASE_URL, DEBUG
 from .exceptions import ArtifactNotFoundError
-from .models import Artifact
+from .models import Artifact, SQLModel
 
 
 class DatabaseRepository:
