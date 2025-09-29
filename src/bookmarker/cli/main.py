@@ -63,9 +63,22 @@ def list_artifacts(ctx: typer.Context):
     config = get_config(ctx)
     artifacts = config.repo.list()
     if artifacts:
-        table = Table("Title", "URL", title="Artifacts")
+        table = Table(title="Artifacts")
+        table.add_column("ID")
+        table.add_column("Title")
+        table.add_column("Type")
+        table.add_column("Fetched", justify="center")
+        table.add_column("Summarized", justify="center")
+        table.add_column("URL")
         for artifact in artifacts:
-            table.add_row(artifact.title, artifact.url)
+            table.add_row(
+                str(artifact.id),
+                artifact.title,
+                artifact.artifact_type.value,
+                ":white_heavy_check_mark:" if artifact.content_raw else ":x:",
+                ":white_heavy_check_mark:" if artifact.content_summary else ":x:",
+                artifact.url,
+            )
         ctx.obj.console.print(table)
     else:
         ctx.obj.error_console.print("No artifacts found.")
