@@ -9,7 +9,7 @@ from ..core.main import (
     ArtifactTypeEnum,
     ContentFetchError,
     DatabaseRepository,
-    get_and_store_content,
+    fetch_and_store_content,
     get_or_create_artifact,
     get_repo,
 )
@@ -96,7 +96,7 @@ def fetch(ctx: typer.Context, artifact_id: int):
     """Fetches content for the specified artifact ID."""
     config = get_config(ctx)
     try:
-        get_and_store_content(config.repo, artifact_id)
+        fetch_and_store_content(config.repo, artifact_id)
         config.console.print(
             f"[green]Content fetched for artifact ID {artifact_id}.[/]"
         )

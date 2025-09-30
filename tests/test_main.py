@@ -11,6 +11,7 @@ from src.bookmarker.core.main import (
     fetch_content,
     get_or_create_artifact,
     store_content,
+    summarize_and_store_content,
     summarize_content,
 )
 from src.bookmarker.core.models import ArtifactTypeEnum
@@ -78,12 +79,22 @@ def test_fetch_content_fetch_error(db_repo, add_article, monkeypatch):
         fetch_content(db_repo, artifact.id)
 
 
-def test_store_content(db_repo, add_article):
+def test_store_content_raw(db_repo, add_article):
     artifact = add_article
     updated_artifact = store_content(db_repo, artifact.id, "#Test header")
 
     assert updated_artifact.id == artifact.id
     assert updated_artifact.content_raw == "#Test header"
+
+
+def test_store_content_summary(db_repo, add_article):
+    artifact = add_article
+    updated_artifact = store_content(
+        db_repo, artifact.id, "Test summary", content_type="summary"
+    )
+
+    assert updated_artifact.id == artifact.id
+    assert updated_artifact.content_summary == "Test summary"
 
 
 @patch("src.bookmarker.core.main.store_content")
@@ -123,10 +134,29 @@ def test_summarize_content_article_not_found(db_repo):
     mock_summarizer.summarize.assert_not_called()
 
 
-def test_get_content_summary_summary_error(db_repo, add_article):
+def test_summarize_content_summary_error(db_repo, add_article):
     artifact = add_article
     mock_summarizer = Mock()
     mock_summarizer.summarize.side_effect = ContentSummaryError()
 
     with pytest.raises(ContentSummaryError):
         summarize_content(db_repo, mock_summarizer, artifact.id)
+
+
+@patch("src.bookmarker.core.main.get_summarizer")
+@patch("src.bookmarker.core.main.store_content")
+@patch("src.bookmarker.core.main.summarize_content")
+def test_summarize_and_store_content(
+    mock_summarize_content, mock_store_content, mock_get_summarizer, db_repo
+):
+    mock_summarize_content.return_value = "Test Summary"
+    mock_artifact = Mock()
+    mock_store_content.return_value = mock_artifact
+
+    result = summarize_and_store_content(db_repo, mock_get_summarizer, 1)
+
+    mock_summarize_content.assert_called_once_with(db_repo, mock_get_summarizer, 1)
+    mock_store_content.assert_called_once_with(
+        db_repo, 1, "Test Summary", content_type="summary"
+    )
+    assert result is mock_artifact
