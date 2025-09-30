@@ -8,15 +8,15 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "alembic>=1.16.5",
     "pydantic-ai-slim[openai]>=1.0.10",
     "python-decouple>=3.8",
     "sqlmodel>=0.0.25",
     "trafilatura>=2.0.0",
+    "typer>=0.19.2",
 ]
 
 [project.scripts]
-bookmarker = "bookmarker:main"
+bookmarker = "bookmarker.__main__:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -24,6 +24,7 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "alembic>=1.16.5",
     "poethepoet>=0.37.0",
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
