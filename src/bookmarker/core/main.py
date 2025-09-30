@@ -35,7 +35,7 @@ def get_or_create_artifact(
     return artifact
 
 
-def get_content(repo: DatabaseRepository, artifact_id: int) -> str | None:
+def fetch_content(repo: DatabaseRepository, artifact_id: int) -> str | None:
     artifact = repo.get(artifact_id)
     if artifact is None:
         raise ArtifactNotFoundError(f"Artifact with ID {artifact_id} not found.")
@@ -64,16 +64,16 @@ def store_content(
     return artifact
 
 
-def get_and_store_content(
+def fetch_and_store_content(
     repo: DatabaseRepository, artifact_id: int
 ) -> Artifact | None:
-    content = get_content(repo, artifact_id)
+    content = fetch_content(repo, artifact_id)
     if content is not None:
         artifact = store_content(repo, artifact_id, content, content_type="raw")
         return artifact
 
 
-def get_content_summary(
+def summarize_content(
     repo: DatabaseRepository, summarizer: ContentSummarizer, artifact_id: int
 ) -> str | None:
     artifact = repo.get(artifact_id)
@@ -86,6 +86,15 @@ def get_content_summary(
     except ContentSummaryError:
         logging.exception(f"Error summarizing content for artifact ID {artifact_id}")
         raise
+
+
+def summarize_and_store_content(
+    repo: DatabaseRepository, summarizer: ContentSummarizer, artifact_id: int
+) -> Artifact | None:
+    summary = summarize_content(repo, summarizer, artifact_id)
+    if summary is not None:
+        artifact = store_content(repo, artifact_id, summary, content_type="summary")
+        return artifact
 
 
 def main():
@@ -105,7 +114,7 @@ if __name__ == "__main__":  # pragma: no cover
 
     url = "https://kpdata.dev/blog/python-slicing/"
     artifact = get_or_create_artifact(repo, "Python Slicing", url)
-    get_and_store_content(repo, artifact.id)
+    fetch_and_store_content(repo, artifact.id)
 
-    summary = get_content_summary(repo, summarizer, artifact.id)
+    summary = summarize_content(repo, summarizer, artifact.id)
     store_content(repo, artifact.id, summary, content_type="summary")

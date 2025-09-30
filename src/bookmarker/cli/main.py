@@ -4,13 +4,14 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from ..core.database import DatabaseRepository, get_repo
 from ..core.main import (
     ArtifactNotFoundError,
     ArtifactTypeEnum,
     ContentFetchError,
+    DatabaseRepository,
     get_and_store_content,
     get_or_create_artifact,
+    get_repo,
 )
 
 app = typer.Typer()
