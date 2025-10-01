@@ -4,15 +4,19 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from ..core.main import (
+from ..core.database import DatabaseRepository, get_repo
+from ..core.exceptions import (
     ArtifactNotFoundError,
-    ArtifactTypeEnum,
     ContentFetchError,
-    DatabaseRepository,
+    ContentSummaryError,
+)
+from ..core.main import (
+    ArtifactTypeEnum,
     fetch_and_store_content,
     get_or_create_artifact,
-    get_repo,
+    summarize_and_store_content,
 )
+from ..core.summarizers import get_summarizer
 
 app = typer.Typer()
 
@@ -96,5 +100,25 @@ def fetch_content(ctx: typer.Context, artifact_id: int):
     except ContentFetchError:
         config.error_console.print(
             f"Error fetching content for artifact ID {artifact_id}."
+        )
+        raise typer.Exit(code=1)
+
+
+@app.command(name="summarize")
+def summarize_content(ctx: typer.Context, artifact_id: int):
+    """Fetches content for the specified artifact ID."""
+    config = get_config(ctx)
+    try:
+        summarizer = get_summarizer()
+        summarize_and_store_content(config.repo, summarizer, artifact_id)
+        config.console.print(
+            f"[green]Content summarized for artifact ID {artifact_id}.[/]"
+        )
+    except ArtifactNotFoundError:
+        config.error_console.print(f"Artifact with ID {artifact_id} not found.")
+        raise typer.Exit(code=1)
+    except ContentSummaryError:
+        config.error_console.print(
+            f"Error summarizing content for artifact ID {artifact_id}."
         )
         raise typer.Exit(code=1)
