@@ -10,7 +10,7 @@ runner = CliRunner()
 def db_setup(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
-    runner.invoke(app, ["init-db"])  # Ensure DB is initialized first
+    runner.invoke(app, ["init-db"])
 
 
 @pytest.fixture()

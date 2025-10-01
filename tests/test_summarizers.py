@@ -60,8 +60,8 @@ def test_summarize_agent_errors(mock_agent_class, exc):
 
 @patch("src.bookmarker.core.summarizers.Agent")
 def test_get_summarizer_returns_openai_instance(mock_agent_class, monkeypatch):
-    monkeypatch.setattr(summarizers, "OPENAI_API_KEY", "fake-key")
-    monkeypatch.setattr(summarizers, "OPENAI_MODEL_NAME", "fake-model")
+    monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+    monkeypatch.setenv("OPENAI_MODEL_NAME", "fake-model")
 
     summarizer = summarizers.get_summarizer()
     assert isinstance(summarizer, OpenAISummarizer)
