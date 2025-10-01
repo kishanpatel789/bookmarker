@@ -7,6 +7,7 @@ from src.bookmarker.core.main import (
     ArtifactNotFoundError,
     ContentFetchError,
     ContentSummaryError,
+    ContentType,
     fetch_and_store_content,
     fetch_content,
     get_or_create_artifact,
@@ -90,7 +91,7 @@ def test_store_content_raw(db_repo, add_article):
 def test_store_content_summary(db_repo, add_article):
     artifact = add_article
     updated_artifact = store_content(
-        db_repo, artifact.id, "Test summary", content_type="summary"
+        db_repo, artifact.id, "Test summary", content_type=ContentType.SUMMARY
     )
 
     assert updated_artifact.id == artifact.id
@@ -108,7 +109,7 @@ def test_fetch_and_store_content(mock_fetch_content, mock_store_content, db_repo
 
     mock_fetch_content.assert_called_once_with(db_repo, 1)
     mock_store_content.assert_called_once_with(
-        db_repo, 1, "Test Content", content_type="raw"
+        db_repo, 1, "Test Content", content_type=ContentType.RAW
     )
     assert result is mock_artifact
 
@@ -157,6 +158,6 @@ def test_summarize_and_store_content(
 
     mock_summarize_content.assert_called_once_with(db_repo, mock_get_summarizer, 1)
     mock_store_content.assert_called_once_with(
-        db_repo, 1, "Test Summary", content_type="summary"
+        db_repo, 1, "Test Summary", content_type=ContentType.SUMMARY
     )
     assert result is mock_artifact
