@@ -30,23 +30,13 @@ def get_config(ctx: typer.Context) -> AppConfig:
 @app.callback()
 def init(ctx: typer.Context):
     repo = get_repo()
+    repo.create_db_and_tables()
     app_config = AppConfig(
         repo=repo,
         console=Console(),
         error_console=Console(stderr=True, style="bold red"),
     )
     ctx.obj = app_config
-
-
-@app.command()
-def init_db(ctx: typer.Context):
-    """Initializes the database."""
-    config = get_config(ctx)
-    try:
-        config.repo.create_db_and_tables()
-        config.console.print("[green]Database initialized.[/]")
-    except Exception as e:
-        config.error_console.print(f"Error initializing DB: {e}")
 
 
 @app.command(name="add")

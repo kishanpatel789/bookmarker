@@ -2,6 +2,7 @@ import pytest
 from typer.testing import CliRunner
 
 from src.bookmarker.cli.main import app
+from src.bookmarker.core.database import DatabaseRepository
 
 runner = CliRunner()
 
@@ -9,8 +10,10 @@ runner = CliRunner()
 @pytest.fixture(autouse=True)
 def db_setup(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path}")
-    runner.invoke(app, ["init-db"])
+    repo = DatabaseRepository(f"sqlite:///{db_path}")
+    monkeypatch.setattr("src.bookmarker.cli.main.get_repo", lambda: repo)
+    yield
+    repo._engine.dispose()
 
 
 @pytest.fixture()
@@ -25,10 +28,10 @@ def add_another_artifact():
     return result
 
 
-def test_init_db():
-    result = runner.invoke(app, ["init-db"])
-    assert result.exit_code == 0
-    assert "Database initialized." in result.output
+# def test_init_db():
+# result = runner.invoke(app, ["init-db"])
+# assert result.exit_code == 0
+# assert "Database initialized." in result.output
 
 
 def test_add_artifact(add_artifact):

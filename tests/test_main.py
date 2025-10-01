@@ -144,7 +144,7 @@ def test_summarize_content_summary_error(db_repo, add_article):
         summarize_content(db_repo, mock_summarizer, artifact.id)
 
 
-@patch("src.bookmarker.core.main.get_summarizer")
+@patch("src.bookmarker.core.summarizers.get_summarizer")
 @patch("src.bookmarker.core.main.store_content")
 @patch("src.bookmarker.core.main.summarize_content")
 def test_summarize_and_store_content(
