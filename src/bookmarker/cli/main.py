@@ -81,8 +81,8 @@ def list_artifacts(ctx: typer.Context):
         ctx.obj.error_console.print("No artifacts found.")
 
 
-@app.command()
-def fetch(ctx: typer.Context, artifact_id: int):
+@app.command(name="fetch")
+def fetch_content(ctx: typer.Context, artifact_id: int):
     """Fetches content for the specified artifact ID."""
     config = get_config(ctx)
     try:

@@ -63,24 +63,3 @@ class Tag(SQLModel, table=True):
         return value
 
     model_config = ConfigDict(validate_assignment=True)
-
-
-if __name__ == "__main__":  # pragma: no cover
-    from sqlmodel import Session, create_engine
-
-    engine = create_engine("sqlite:///bookmarker.sqlite", echo=True)
-    SQLModel.metadata.create_all(engine)
-
-    tag_python = Tag(name="python")
-    tag_cloud = Tag(name="cloud")
-    artifact = Artifact(
-        title="Test Article",
-        url="https://example.com",
-        notes="This seems interesting",
-        tags=[tag_python, tag_cloud],
-    )
-
-    with Session(engine) as session:
-        session.add(artifact)
-        session.commit()
-        session.refresh(artifact)
