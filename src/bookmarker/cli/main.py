@@ -4,8 +4,15 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from ..core.database import DatabaseRepository, get_repo
-from ..core.main import ArtifactTypeEnum, get_or_create_artifact
+from ..core.main import (
+    ArtifactNotFoundError,
+    ArtifactTypeEnum,
+    ContentFetchError,
+    DatabaseRepository,
+    fetch_and_store_content,
+    get_or_create_artifact,
+    get_repo,
+)
 
 app = typer.Typer()
 
@@ -82,3 +89,22 @@ def list_artifacts(ctx: typer.Context):
         ctx.obj.console.print(table)
     else:
         ctx.obj.error_console.print("No artifacts found.")
+
+
+@app.command()
+def fetch(ctx: typer.Context, artifact_id: int):
+    """Fetches content for the specified artifact ID."""
+    config = get_config(ctx)
+    try:
+        fetch_and_store_content(config.repo, artifact_id)
+        config.console.print(
+            f"[green]Content fetched for artifact ID {artifact_id}.[/]"
+        )
+    except ArtifactNotFoundError:
+        config.error_console.print(f"Artifact with ID {artifact_id} not found.")
+        raise typer.Exit(code=1)
+    except ContentFetchError:
+        config.error_console.print(
+            f"Error fetching content for artifact ID {artifact_id}."
+        )
+        raise typer.Exit(code=1)

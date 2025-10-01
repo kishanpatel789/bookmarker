@@ -1,12 +1,22 @@
 from abc import ABC, abstractmethod
 
+from decouple import config
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import AgentRunError, UserError
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from .config import OPENAI_API_KEY, OPENAI_MODEL_NAME
 from .exceptions import ContentSummaryError, InvalidContentError
+
+SUMMARIZER_REGISTRY = {}
+
+
+def register_summarizer(name: str):
+    def decorator(cls):
+        SUMMARIZER_REGISTRY[name] = cls
+        return cls
+
+    return decorator
 
 
 class ContentSummarizer(ABC):
@@ -15,8 +25,13 @@ class ContentSummarizer(ABC):
         """Summarize the given content and return the summary as a string."""
 
 
+@register_summarizer("openai")
 class OpenAISummarizer(ContentSummarizer):
-    def __init__(self, api_key: str, model_name: str):
+    def __init__(self, api_key: str | None = None, model_name: str | None = None):
+        if api_key is None:
+            api_key = config("OPENAI_API_KEY")
+        if model_name is None:
+            model_name = config("OPENAI_MODEL_NAME")
         model = OpenAIChatModel(model_name, provider=OpenAIProvider(api_key=api_key))
         self.agent = Agent(
             model,
@@ -41,20 +56,21 @@ class OpenAISummarizer(ContentSummarizer):
             raise ContentSummaryError(f"Error during content summarization: {e}")
 
 
+@register_summarizer("anthropic")
+class AnthropicSummarizer(ContentSummarizer): ...
+
+
 def get_summarizer() -> ContentSummarizer:
-    return OpenAISummarizer(api_key=OPENAI_API_KEY, model_name=OPENAI_MODEL_NAME)
+    backend = config("SUMMARIZER_BACKEND", default="openai")
+    return SUMMARIZER_REGISTRY[backend]()
 
 
-if __name__ == "__main__":  # pragma: no cover
-    from .database import get_repo
-
-    repo = get_repo()
-    url = "https://kpdata.dev/blog/python-slicing/"
-
-    artifact = repo.get_by_url(url)
-
-    # result = summary_agent.run_sync(artifact.content_raw)
-    # print(result.output)
-
-    summarizer = OpenAISummarizer(api_key=OPENAI_API_KEY, model_name=OPENAI_MODEL_NAME)
-    print(summarizer.summarize(artifact.content_raw))
+# if __name__ == "__main__":  # pragma: no cover
+# from .database import get_repo
+# repo = get_repo()
+# url = "https://kpdata.dev/blog/python-slicing/"
+# artifact = repo.get_by_url(url)
+# result = summary_agent.run_sync(artifact.content_raw)
+# print(result.output)
+# summarizer = OpenAISummarizer(api_key=OPENAI_API_KEY, model_name=OPENAI_MODEL_NAME)
+# print(summarizer.summarize(artifact.content_raw))

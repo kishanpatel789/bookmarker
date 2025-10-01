@@ -1,8 +1,8 @@
 from typing import Sequence
 
+from decouple import config
 from sqlmodel import Session, create_engine, select
 
-from .config import DATABASE_URL, DEBUG
 from .exceptions import ArtifactNotFoundError
 from .models import Artifact, SQLModel
 
@@ -67,4 +67,7 @@ class DatabaseRepository:
 
 
 def get_repo() -> DatabaseRepository:
-    return DatabaseRepository(database_url=DATABASE_URL, echo=DEBUG)
+    # read env vars locally to allow test overrides for cli
+    database_url = config("DATABASE_URL")
+    debug = config("DEBUG", cast=bool, default=False)
+    return DatabaseRepository(database_url=database_url, echo=debug)

@@ -7,11 +7,13 @@ from src.bookmarker.core.main import (
     ArtifactNotFoundError,
     ContentFetchError,
     ContentSummaryError,
-    get_and_store_content,
-    get_content,
-    get_content_summary,
+    ContentType,
+    fetch_and_store_content,
+    fetch_content,
     get_or_create_artifact,
     store_content,
+    summarize_and_store_content,
+    summarize_content,
 )
 from src.bookmarker.core.models import ArtifactTypeEnum
 
@@ -47,7 +49,7 @@ def test_add_existing_artifact(db_repo, add_article):
     assert len(db_repo.list()) == 1
 
 
-def test_get_article_content_with_mocked_fetcher(db_repo, add_article, monkeypatch):
+def test_fetch_article_content_with_mocked_fetcher(db_repo, add_article, monkeypatch):
     artifact = add_article
 
     mock_fetcher = create_autospec(FETCHERS[ArtifactTypeEnum.ARTICLE], instance=True)
@@ -56,18 +58,18 @@ def test_get_article_content_with_mocked_fetcher(db_repo, add_article, monkeypat
 
     monkeypatch.setitem(FETCHERS, ArtifactTypeEnum.ARTICLE, mock_class)
 
-    content = get_content(db_repo, artifact.id)
+    content = fetch_content(db_repo, artifact.id)
 
     assert content == "Test Content"
     mock_fetcher.fetch.assert_called_once_with(artifact.url)
 
 
-def test_get_content_article_not_found(db_repo):
+def test_fetch_content_article_not_found(db_repo):
     with pytest.raises(ArtifactNotFoundError, match="Artifact with ID 99 not found."):
-        get_content(db_repo, artifact_id=99)
+        fetch_content(db_repo, artifact_id=99)
 
 
-def test_get_content_fetch_error(db_repo, add_article, monkeypatch):
+def test_fetch_content_fetch_error(db_repo, add_article, monkeypatch):
     artifact = add_article
     mock_fetcher = create_autospec(FETCHERS[ArtifactTypeEnum.ARTICLE], instance=True)
     mock_fetcher.fetch.side_effect = ContentFetchError()
@@ -75,10 +77,10 @@ def test_get_content_fetch_error(db_repo, add_article, monkeypatch):
     monkeypatch.setitem(FETCHERS, ArtifactTypeEnum.ARTICLE, mock_class)
 
     with pytest.raises(ContentFetchError):
-        get_content(db_repo, artifact.id)
+        fetch_content(db_repo, artifact.id)
 
 
-def test_store_content(db_repo, add_article):
+def test_store_content_raw(db_repo, add_article):
     artifact = add_article
     updated_artifact = store_content(db_repo, artifact.id, "#Test header")
 
@@ -86,23 +88,33 @@ def test_store_content(db_repo, add_article):
     assert updated_artifact.content_raw == "#Test header"
 
 
+def test_store_content_summary(db_repo, add_article):
+    artifact = add_article
+    updated_artifact = store_content(
+        db_repo, artifact.id, "Test summary", content_type=ContentType.SUMMARY
+    )
+
+    assert updated_artifact.id == artifact.id
+    assert updated_artifact.content_summary == "Test summary"
+
+
 @patch("src.bookmarker.core.main.store_content")
-@patch("src.bookmarker.core.main.get_content")
-def test_get_and_store_content(mock_get_content, mock_store_content, db_repo):
-    mock_get_content.return_value = "Test Content"
+@patch("src.bookmarker.core.main.fetch_content")
+def test_fetch_and_store_content(mock_fetch_content, mock_store_content, db_repo):
+    mock_fetch_content.return_value = "Test Content"
     mock_artifact = Mock()
     mock_store_content.return_value = mock_artifact
 
-    result = get_and_store_content(db_repo, 1)
+    result = fetch_and_store_content(db_repo, 1)
 
-    mock_get_content.assert_called_once_with(db_repo, 1)
+    mock_fetch_content.assert_called_once_with(db_repo, 1)
     mock_store_content.assert_called_once_with(
-        db_repo, 1, "Test Content", content_type="raw"
+        db_repo, 1, "Test Content", content_type=ContentType.RAW
     )
     assert result is mock_artifact
 
 
-def test_get_content_summary(db_repo, add_article, monkeypatch):
+def test_summarize_content(db_repo, add_article, monkeypatch):
     artifact = add_article
     artifact.content_raw = "This is article content."
     monkeypatch.setattr(db_repo, "get", lambda x: artifact)
@@ -110,23 +122,42 @@ def test_get_content_summary(db_repo, add_article, monkeypatch):
     mock_summarizer = Mock()
     mock_summarizer.summarize.return_value = "This is a summary."
 
-    result = get_content_summary(db_repo, mock_summarizer, artifact.id)
+    result = summarize_content(db_repo, mock_summarizer, artifact.id)
 
     assert result == "This is a summary."
     mock_summarizer.summarize.assert_called_once_with("This is article content.")
 
 
-def test_get_content_summary_article_not_found(db_repo):
+def test_summarize_content_article_not_found(db_repo):
     mock_summarizer = Mock()
     with pytest.raises(ArtifactNotFoundError, match="Artifact with ID 99 not found."):
-        get_content_summary(db_repo, mock_summarizer, artifact_id=99)
+        summarize_content(db_repo, mock_summarizer, artifact_id=99)
     mock_summarizer.summarize.assert_not_called()
 
 
-def test_get_content_summary_summary_error(db_repo, add_article):
+def test_summarize_content_summary_error(db_repo, add_article):
     artifact = add_article
     mock_summarizer = Mock()
     mock_summarizer.summarize.side_effect = ContentSummaryError()
 
     with pytest.raises(ContentSummaryError):
-        get_content_summary(db_repo, mock_summarizer, artifact.id)
+        summarize_content(db_repo, mock_summarizer, artifact.id)
+
+
+@patch("src.bookmarker.core.main.get_summarizer")
+@patch("src.bookmarker.core.main.store_content")
+@patch("src.bookmarker.core.main.summarize_content")
+def test_summarize_and_store_content(
+    mock_summarize_content, mock_store_content, mock_get_summarizer, db_repo
+):
+    mock_summarize_content.return_value = "Test Summary"
+    mock_artifact = Mock()
+    mock_store_content.return_value = mock_artifact
+
+    result = summarize_and_store_content(db_repo, mock_get_summarizer, 1)
+
+    mock_summarize_content.assert_called_once_with(db_repo, mock_get_summarizer, 1)
+    mock_store_content.assert_called_once_with(
+        db_repo, 1, "Test Summary", content_type=ContentType.SUMMARY
+    )
+    assert result is mock_artifact
