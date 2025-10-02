@@ -63,14 +63,3 @@ class AnthropicSummarizer(ContentSummarizer): ...
 def get_summarizer() -> ContentSummarizer:
     backend = config("SUMMARIZER_BACKEND", default="openai")
     return SUMMARIZER_REGISTRY[backend]()
-
-
-# if __name__ == "__main__":  # pragma: no cover
-# from .database import get_repo
-# repo = get_repo()
-# url = "https://kpdata.dev/blog/python-slicing/"
-# artifact = repo.get_by_url(url)
-# result = summary_agent.run_sync(artifact.content_raw)
-# print(result.output)
-# summarizer = OpenAISummarizer(api_key=OPENAI_API_KEY, model_name=OPENAI_MODEL_NAME)
-# print(summarizer.summarize(artifact.content_raw))

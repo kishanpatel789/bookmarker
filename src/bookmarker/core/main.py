@@ -116,13 +116,3 @@ def main():
 
 if __name__ == "__main__":  # pragma: no cover
     main()
-    # test ground
-    # from .database import get_repo
-    # from .summarizers import get_summarizer
-    # repo = get_repo()
-    # summarizer = get_summarizer()
-    # url = "https://kpdata.dev/blog/python-slicing/"
-    # artifact = get_or_create_artifact(repo, "Python Slicing", url)
-    # fetch_and_store_content(repo, artifact.id)
-    # summary = summarize_content(repo, summarizer, artifact.id)
-    # store_content(repo, artifact.id, summary, content_type="summary")
