@@ -38,7 +38,7 @@ def test_add_artifact(add_artifact):
     result = add_artifact
 
     assert result.exit_code == 0
-    assert "Artifact added:" in result.output
+    assert "Artifact added with ID" in result.output
     assert "Test Article" in result.output
     assert "https://example.com" in result.output
 
@@ -122,3 +122,61 @@ def test_summarize_content_summarize_error(
     assert result.exit_code == 1
     assert "Error summarizing content for artifact ID 1." in result.output
     mock_summarize_store_func.assert_called_once_with(db_setup, mock_summarizer, 1)
+
+
+@patch("src.bookmarker.cli.main.get_repo")
+def test_show_artifact(mock_get_repo):
+    mock_artifact = Mock(
+        id=1,
+        title="Test Article",
+        url="https://example.com",
+        content_raw="Test content",
+        content_summary="Test summary.",
+    )
+    mock_repo = Mock()
+    mock_repo.get.return_value = mock_artifact
+    mock_get_repo.return_value = mock_repo
+
+    result = runner.invoke(app, ["show", "1"])
+
+    assert result.exit_code == 0
+    assert "Test Article" in result.output
+    assert "https://example" in result.output
+    assert "Test summary" in result.output
+    assert "Test content" not in result.output
+
+
+def test_show_artifact_not_fetched(add_artifact):
+    result = runner.invoke(app, ["show", "1"])
+
+    assert result.exit_code == 0
+    assert "Content has not been fetched yet." in result.output
+    assert "`bookmarker fetch 1`" in result.output
+    assert "`bookmarker summarize 1`" in result.output
+
+
+@patch("src.bookmarker.cli.main.get_repo")
+def test_show_artifact_not_summarized(mock_get_repo):
+    mock_artifact = Mock(
+        id=1,
+        title="Test Article",
+        url="https://example.com",
+        content_raw="Test content",
+        content_summary=None,
+    )
+    mock_repo = Mock()
+    mock_repo.get.return_value = mock_artifact
+    mock_get_repo.return_value = mock_repo
+
+    result = runner.invoke(app, ["show", "1"])
+
+    assert result.exit_code == 0
+    assert "No summary yet" in result.output
+    assert "`bookmarker summarize 1`" in result.output
+
+
+def test_show_artifact_not_found():
+    result = runner.invoke(app, ["show", "99"])
+
+    assert result.exit_code == 1
+    assert "Artifact with ID 99 not found." in result.output
