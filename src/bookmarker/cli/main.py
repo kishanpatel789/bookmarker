@@ -14,6 +14,7 @@ from ..core.exceptions import (
     ArtifactNotFoundError,
     ContentFetchError,
     ContentSummaryError,
+    InvalidContentError,
 )
 from ..core.main import (
     ArtifactTypeEnum,
@@ -135,6 +136,12 @@ def summarize_content(ctx: typer.Context, artifact_id: int):
         )
     except ArtifactNotFoundError:
         config.error_console.print(f"Artifact with ID {artifact_id} not found.")
+        raise typer.Exit(code=1)
+    except InvalidContentError:
+        config.error_console.print(
+            f"Artifact with ID {artifact_id} has no raw content yet.\n"
+            f"Run `bookmarker fetch {artifact_id}` first."
+        )
         raise typer.Exit(code=1)
     except ContentSummaryError:
         config.error_console.print(
