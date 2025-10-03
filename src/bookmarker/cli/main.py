@@ -5,6 +5,7 @@ from rich.console import Console
 from rich.markup import escape
 from rich.padding import Padding
 from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.text import Text
 
@@ -96,7 +97,13 @@ def fetch_content(ctx: typer.Context, artifact_id: int):
     """Fetches content for the specified artifact ID."""
     config = get_config(ctx)
     try:
-        fetch_and_store_content(config.repo, artifact_id)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Fetching...", total=None)
+            fetch_and_store_content(config.repo, artifact_id)
         config.console.print(
             f"[green]Content fetched for artifact ID {artifact_id}.[/]"
         )
@@ -115,8 +122,14 @@ def summarize_content(ctx: typer.Context, artifact_id: int):
     """Fetches content for the specified artifact ID."""
     config = get_config(ctx)
     try:
-        summarizer = get_summarizer()
-        summarize_and_store_content(config.repo, summarizer, artifact_id)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Summarizing...", total=None)
+            summarizer = get_summarizer()
+            summarize_and_store_content(config.repo, summarizer, artifact_id)
         config.console.print(
             f"[green]Content summarized for artifact ID {artifact_id}.[/]"
         )
