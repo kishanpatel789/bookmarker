@@ -2,7 +2,11 @@ from typing import NamedTuple
 
 import typer
 from rich.console import Console
+from rich.markup import escape
+from rich.padding import Padding
+from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from ..core.database import DatabaseRepository, get_repo
 from ..core.exceptions import (
@@ -55,7 +59,9 @@ def add_artifacts(
     artifact = get_or_create_artifact(
         config.repo, title=title, url=url, artifact_type=artifact_type
     )
-    config.console.print(f"[green]Artifact added:[/] {artifact.title} - {artifact.url}")
+    config.console.print(
+        f"[green]Artifact added with ID {artifact.id}:[/] {artifact.title} - {artifact.url}"
+    )
 
 
 @app.command(name="list")
@@ -122,3 +128,33 @@ def summarize_content(ctx: typer.Context, artifact_id: int):
             f"Error summarizing content for artifact ID {artifact_id}."
         )
         raise typer.Exit(code=1)
+
+
+@app.command(name="show")
+def show_artifact(ctx: typer.Context, artifact_id: int):
+    """Show details for the specified artifact ID."""
+    config = get_config(ctx)
+    artifact = config.repo.get(artifact_id)
+    if artifact is None:
+        config.error_console.print(f"Artifact with ID {artifact_id} not found.")
+        raise typer.Exit(code=1)
+    if artifact.content_raw is None and artifact.content_summary is None:
+        summary = (
+            "Content has not been fetched yet.\n"
+            f"Run `bookmarker fetch {artifact.id}`.\n"
+            f"Then run `bookmarker summarize {artifact.id}`."
+        )
+    elif artifact.content_summary is None:
+        summary = f"No summary yet. Run `bookmarker summarize {artifact.id}`"
+    else:
+        summary = escape(artifact.content_summary)
+    text = Text(summary, justify="left")
+    body = Padding(text, (1, 2))
+    panel = Panel.fit(
+        body,
+        title=f"[bold]{artifact.title}[/]",
+        subtitle=artifact.url,
+        subtitle_align="right",
+        border_style="cyan",
+    )
+    config.console.print(panel)
