@@ -19,6 +19,7 @@ from ..core.exceptions import (
 from ..core.main import (
     ArtifactTypeEnum,
     fetch_and_store_content,
+    fetch_and_store_content_many,
     get_or_create_artifact,
     summarize_and_store_content,
 )
@@ -116,6 +117,32 @@ def fetch_content(ctx: typer.Context, artifact_id: int):
             f"Error fetching content for artifact ID {artifact_id}."
         )
         raise typer.Exit(code=1)
+
+
+@app.command(name="fetch-many")
+def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
+    """Fetch multiple artifacts concurrently."""
+    config = get_config(ctx)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task(
+            "Fetching multiple artifacts...", total=len(artifact_ids)
+        )
+        results = fetch_and_store_content_many(config.repo, artifact_ids)
+        progress.update(task, completed=len(artifact_ids))
+
+    for aid, status in results.items():
+        if status == "ok":
+            config.console.print(f"[green]Fetched artifact {aid} successfully.[/]")
+        elif status == "not_found":
+            config.error_console.print(f"[red]Artifact {aid} not found.[/]")
+        else:
+            config.error_console.print(
+                f"[red]Failed to fetch artifact {aid}: {status}[/]"
+            )
 
 
 @app.command(name="summarize")
