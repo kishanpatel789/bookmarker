@@ -158,16 +158,19 @@ def show_artifact(ctx: typer.Context, artifact_id: int):
     if artifact is None:
         config.error_console.print(f"Artifact with ID {artifact_id} not found.")
         raise typer.Exit(code=1)
-    if artifact.content_raw is None and artifact.content_summary is None:
-        summary = (
-            "Content has not been fetched yet.\n"
-            f"Run `bookmarker fetch {artifact.id}`.\n"
-            f"Then run `bookmarker summarize {artifact.id}`."
-        )
-    elif artifact.content_summary is None:
-        summary = f"No summary yet. Run `bookmarker summarize {artifact.id}`"
+
+    if artifact.content_summary is None:
+        if artifact.content_raw is None:
+            summary = (
+                "Content has not been fetched yet.\n"
+                f"Run `bookmarker fetch {artifact.id}`.\n"
+                f"Then run `bookmarker summarize {artifact.id}`."
+            )
+        else:
+            summary = f"No summary yet. Run `bookmarker summarize {artifact.id}`"
     else:
         summary = escape(artifact.content_summary)
+
     text = Text(summary, justify="left")
     body = Padding(text, (1, 2))
     panel = Panel.fit(
