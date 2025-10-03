@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import Enum, auto
 
 from .database import DatabaseRepository, get_repo
@@ -83,6 +84,29 @@ def fetch_and_store_content(
         return artifact
 
 
+def fetch_and_store_content_many(
+    repo: DatabaseRepository, artifact_ids: list[int], max_workers: int = 5
+) -> dict:
+    results = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_id = {}
+        for a_id in artifact_ids:
+            future = executor.submit(fetch_and_store_content, repo, a_id)
+            future_to_id[future] = a_id
+        for future in as_completed(future_to_id):
+            a_id = future_to_id[future]
+            try:
+                future.result()
+                results[a_id] = "ok"
+            except ArtifactNotFoundError:
+                results[a_id] = "not_found"
+            except ContentFetchError:
+                results[a_id] = "fetch_error"
+            except Exception as e:
+                results[a_id] = f"exception: {e}"
+    return results
+
+
 def summarize_content(
     repo: DatabaseRepository, summarizer: ContentSummarizer, artifact_id: int
 ) -> str | None:
@@ -116,3 +140,7 @@ def main():
 
 if __name__ == "__main__":  # pragma: no cover
     main()
+
+    # scratch work
+    repo = get_repo()
+    results = fetch_and_store_content_many(repo, [1, 2, 3, 4])
