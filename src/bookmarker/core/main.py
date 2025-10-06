@@ -145,6 +145,40 @@ def summarize_and_store_content(
         return artifact
 
 
+def summarize_and_store_content_many(
+    repo: DatabaseRepository,
+    summarizer: ContentSummarizer,
+    artifact_ids: list[int],
+    max_workers: int = 5,
+) -> dict:
+    results = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_id = {}
+        for a_id in artifact_ids:
+            future = executor.submit(
+                summarize_and_store_content, repo, summarizer, a_id
+            )
+            future_to_id[future] = a_id
+        try:
+            for future in as_completed(future_to_id, timeout=TIMEOUT_MULTITHREADING):
+                a_id = future_to_id[future]
+                try:
+                    future.result()
+                    results[a_id] = "ok"
+                except ArtifactNotFoundError:
+                    results[a_id] = "not_found"
+                except ContentSummaryError:
+                    results[a_id] = "summarize_error"
+                except Exception as e:
+                    results[a_id] = f"exception: {e}"
+        except TimeoutError:
+            logger.error(
+                "Timeout error. Considering increasing TIMEOUT_MULTITHREADING."
+            )
+            raise
+    return results
+
+
 def main():
     repo = get_repo()
     repo.create_db_and_tables()
