@@ -2,6 +2,7 @@ from unittest.mock import Mock, create_autospec, patch
 
 import pytest
 
+import src.bookmarker.core.main as core
 from src.bookmarker.core.main import (
     FETCHERS,
     ArtifactNotFoundError,
@@ -9,10 +10,12 @@ from src.bookmarker.core.main import (
     ContentSummaryError,
     ContentType,
     fetch_and_store_content,
+    fetch_and_store_content_many,
     fetch_content,
     get_or_create_artifact,
     store_content,
     summarize_and_store_content,
+    summarize_and_store_content_many,
     summarize_content,
 )
 from src.bookmarker.core.models import ArtifactTypeEnum
@@ -98,6 +101,13 @@ def test_store_content_summary(db_repo, add_article):
     assert updated_artifact.content_summary == "Test summary"
 
 
+def test_store_content_bad_type(db_repo, add_article):
+    artifact = add_article
+
+    with pytest.raises(ValueError):
+        store_content(db_repo, artifact.id, "Test summary", content_type="bad type")
+
+
 @patch("src.bookmarker.core.main.store_content")
 @patch("src.bookmarker.core.main.fetch_content")
 def test_fetch_and_store_content(mock_fetch_content, mock_store_content, db_repo):
@@ -112,6 +122,75 @@ def test_fetch_and_store_content(mock_fetch_content, mock_store_content, db_repo
         db_repo, 1, "Test Content", content_type=ContentType.RAW
     )
     assert result is mock_artifact
+
+
+@patch("src.bookmarker.core.main.fetch_and_store_content")
+def test_fetch_and_store_content_many(mock_fetch_store, db_repo):
+    results = fetch_and_store_content_many(db_repo, [1, 2, 3], max_workers=2)
+
+    assert all(v == "ok" for v in results.values())
+    assert set(results.keys()) == {1, 2, 3}
+    assert mock_fetch_store.call_count == 3
+
+
+def test_fetch_and_store_content_many_not_found(monkeypatch, db_repo):
+    def mock_fetch_store(repo, artifact_id):
+        if artifact_id == 2:
+            raise ArtifactNotFoundError
+        return None
+
+    monkeypatch.setattr(core, "fetch_and_store_content", mock_fetch_store)
+
+    results = fetch_and_store_content_many(db_repo, [1, 2, 3])
+
+    assert results[1] == "ok"
+    assert results[2] == "not_found"
+    assert results[3] == "ok"
+
+
+def test_fetch_and_store_content_many_fetch_error(monkeypatch, db_repo):
+    def mock_fetch_store(repo, artifact_id):
+        if artifact_id == 2:
+            raise ContentFetchError
+        return None
+
+    monkeypatch.setattr(core, "fetch_and_store_content", mock_fetch_store)
+
+    results = fetch_and_store_content_many(db_repo, [1, 2, 3])
+
+    assert results[1] == "ok"
+    assert results[2] == "fetch_error"
+    assert results[3] == "ok"
+
+
+def test_fetch_and_store_content_many_other_exception(monkeypatch, db_repo):
+    def mock_fetch_store(repo, artifact_id):
+        if artifact_id == 2:
+            raise ValueError("Something happened")
+        return None
+
+    monkeypatch.setattr(core, "fetch_and_store_content", mock_fetch_store)
+
+    results = fetch_and_store_content_many(db_repo, [1, 2, 3])
+
+    assert results[1] == "ok"
+    assert results[2].startswith("exception:")
+    assert results[3] == "ok"
+
+
+@patch("src.bookmarker.core.main.fetch_and_store_content")
+def test_fetch_and_store_content_many_timeout(
+    mock_fetch_store, monkeypatch, db_repo, caplog
+):
+    mock_as_completed = Mock()
+    mock_as_completed.side_effect = TimeoutError
+
+    monkeypatch.setattr(core, "as_completed", mock_as_completed)
+
+    with pytest.raises(TimeoutError):
+        fetch_and_store_content_many(db_repo, [1, 2, 3])
+
+    assert "Timeout error" in caplog.text
 
 
 def test_summarize_content(db_repo, add_article, monkeypatch):
@@ -161,3 +240,83 @@ def test_summarize_and_store_content(
         db_repo, 1, "Test Summary", content_type=ContentType.SUMMARY
     )
     assert result is mock_artifact
+
+
+# NEW STUFF BELOW
+@patch("src.bookmarker.core.main.summarize_and_store_content")
+def test_summarize_and_store_content_many(mock_summarize_store, db_repo):
+    mock_summarizer = Mock()
+    results = summarize_and_store_content_many(
+        db_repo, mock_summarizer, [1, 2, 3], max_workers=2
+    )
+
+    assert all(v == "ok" for v in results.values())
+    assert set(results.keys()) == {1, 2, 3}
+    assert mock_summarize_store.call_count == 3
+
+
+def test_summarize_and_store_content_many_not_found(monkeypatch, db_repo):
+    mock_summarizer = Mock()
+
+    def mock_summarize_store(repo, summarizer, artifact_id):
+        if artifact_id == 2:
+            raise ArtifactNotFoundError
+        return None
+
+    monkeypatch.setattr(core, "summarize_and_store_content", mock_summarize_store)
+
+    results = summarize_and_store_content_many(db_repo, mock_summarizer, [1, 2, 3])
+
+    assert results[1] == "ok"
+    assert results[2] == "not_found"
+    assert results[3] == "ok"
+
+
+def test_summarize_and_store_content_many_summarize_error(monkeypatch, db_repo):
+    mock_summarizer = Mock()
+
+    def mock_summarize_store(repo, summarizer, artifact_id):
+        if artifact_id == 2:
+            raise ContentSummaryError
+        return None
+
+    monkeypatch.setattr(core, "summarize_and_store_content", mock_summarize_store)
+
+    results = summarize_and_store_content_many(db_repo, mock_summarizer, [1, 2, 3])
+
+    assert results[1] == "ok"
+    assert results[2] == "summarize_error"
+    assert results[3] == "ok"
+
+
+def test_summarize_and_store_content_many_other_exception(monkeypatch, db_repo):
+    mock_summarizer = Mock()
+
+    def mock_summarize_store(repo, summarizer, artifact_id):
+        if artifact_id == 2:
+            raise ValueError("Something happened")
+        return None
+
+    monkeypatch.setattr(core, "summarize_and_store_content", mock_summarize_store)
+
+    results = summarize_and_store_content_many(db_repo, mock_summarizer, [1, 2, 3])
+
+    assert results[1] == "ok"
+    assert results[2].startswith("exception:")
+    assert results[3] == "ok"
+
+
+@patch("src.bookmarker.core.main.summarize_and_store_content")
+def test_summarize_and_store_content_many_timeout(
+    mock_summarize_store, monkeypatch, db_repo, caplog
+):
+    mock_summarizer = Mock()
+    mock_as_completed = Mock()
+    mock_as_completed.side_effect = TimeoutError
+
+    monkeypatch.setattr(core, "as_completed", mock_as_completed)
+
+    with pytest.raises(TimeoutError):
+        summarize_and_store_content_many(db_repo, mock_summarizer, [1, 2, 3])
+
+    assert "Timeout error" in caplog.text

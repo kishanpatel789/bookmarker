@@ -186,7 +186,3 @@ def main():
 
 if __name__ == "__main__":  # pragma: no cover
     main()
-
-    # scratch work
-    repo = get_repo()
-    results = fetch_and_store_content_many(repo, [1, 2, 3, 4])
