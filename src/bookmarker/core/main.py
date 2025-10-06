@@ -2,6 +2,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import Enum, auto
 
+from .config import set_up_logging
 from .database import DatabaseRepository, get_repo
 from .exceptions import ArtifactNotFoundError, ContentFetchError, ContentSummaryError
 from .fetchers import ContentFetcher, TrafilaturaFetcher, YouTubeFetcher
@@ -12,6 +13,11 @@ FETCHERS = {
     ArtifactTypeEnum.ARTICLE: TrafilaturaFetcher,
     ArtifactTypeEnum.YOUTUBE: YouTubeFetcher,
 }
+
+TIMEOUT_MULTITHREADING = 10
+
+set_up_logging()
+logger = logging.getLogger(__name__)
 
 
 class ContentType(Enum):
@@ -27,7 +33,7 @@ def get_or_create_artifact(
 ) -> Artifact:
     existing_artifact = repo.get_by_url(url)
     if existing_artifact is not None:
-        logging.info(
+        logger.info(
             f"Artifact with URL '{url}' already exists with ID {existing_artifact.id}."
         )
         return existing_artifact
@@ -52,7 +58,7 @@ def fetch_content(repo: DatabaseRepository, artifact_id: int) -> str | None:
         content = fetcher.fetch(artifact.url)
         return content
     except ContentFetchError:
-        logging.error(f"Error fetching content for artifact ID {artifact_id}")
+        logger.error(f"Error fetching content for artifact ID {artifact_id}")
         raise
 
 
@@ -93,17 +99,23 @@ def fetch_and_store_content_many(
         for a_id in artifact_ids:
             future = executor.submit(fetch_and_store_content, repo, a_id)
             future_to_id[future] = a_id
-        for future in as_completed(future_to_id):
-            a_id = future_to_id[future]
-            try:
-                future.result()
-                results[a_id] = "ok"
-            except ArtifactNotFoundError:
-                results[a_id] = "not_found"
-            except ContentFetchError:
-                results[a_id] = "fetch_error"
-            except Exception as e:
-                results[a_id] = f"exception: {e}"
+        try:
+            for future in as_completed(future_to_id, timeout=TIMEOUT_MULTITHREADING):
+                a_id = future_to_id[future]
+                try:
+                    future.result()
+                    results[a_id] = "ok"
+                except ArtifactNotFoundError:
+                    results[a_id] = "not_found"
+                except ContentFetchError:
+                    results[a_id] = "fetch_error"
+                except Exception as e:
+                    results[a_id] = f"exception: {e}"
+        except TimeoutError:
+            logger.error(
+                "Timeout error. Considering increasing TIMEOUT_MULTITHREADING."
+            )
+            raise
     return results
 
 
@@ -118,7 +130,7 @@ def summarize_content(
         summary = summarizer.summarize(artifact.content_raw)
         return summary
     except ContentSummaryError:
-        logging.exception(f"Error summarizing content for artifact ID {artifact_id}")
+        logger.exception(f"Error summarizing content for artifact ID {artifact_id}")
         raise
 
 

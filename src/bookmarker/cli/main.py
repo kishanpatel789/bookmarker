@@ -123,6 +123,7 @@ def fetch_content(ctx: typer.Context, artifact_id: int):
 def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
     """Fetch multiple artifacts concurrently."""
     config = get_config(ctx)
+    bulk_fetch_timed_out = False
     with Progress(
         SpinnerColumn(),
         TextColumn("{task.description}"),
@@ -131,8 +132,19 @@ def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
         task = progress.add_task(
             "Fetching multiple artifacts...", total=len(artifact_ids)
         )
-        results = fetch_and_store_content_many(config.repo, artifact_ids)
-        progress.update(task, completed=len(artifact_ids))
+        try:
+            results = fetch_and_store_content_many(config.repo, artifact_ids)
+        except TimeoutError:
+            bulk_fetch_timed_out = True
+        finally:
+            progress.update(task, completed=len(artifact_ids))
+
+    # throw console error outisde progress context manager for cleaner output
+    if bulk_fetch_timed_out:
+        config.error_console.print(
+            "[red]Exceeded time limit for bulk fetching. Try fetching fewer artifacts.[/]"
+        )
+        raise typer.Exit(code=1)
 
     for aid, status in results.items():
         if status == "ok":
