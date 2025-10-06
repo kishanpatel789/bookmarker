@@ -5,6 +5,7 @@ from rich.console import Console
 from rich.markup import escape
 from rich.padding import Padding
 from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.text import Text
 
@@ -13,10 +14,12 @@ from ..core.exceptions import (
     ArtifactNotFoundError,
     ContentFetchError,
     ContentSummaryError,
+    InvalidContentError,
 )
 from ..core.main import (
     ArtifactTypeEnum,
     fetch_and_store_content,
+    fetch_and_store_content_many,
     get_or_create_artifact,
     summarize_and_store_content,
 )
@@ -96,7 +99,13 @@ def fetch_content(ctx: typer.Context, artifact_id: int):
     """Fetches content for the specified artifact ID."""
     config = get_config(ctx)
     try:
-        fetch_and_store_content(config.repo, artifact_id)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Fetching...", total=None)
+            fetch_and_store_content(config.repo, artifact_id)
         config.console.print(
             f"[green]Content fetched for artifact ID {artifact_id}.[/]"
         )
@@ -110,18 +119,56 @@ def fetch_content(ctx: typer.Context, artifact_id: int):
         raise typer.Exit(code=1)
 
 
+@app.command(name="fetch-many")
+def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
+    """Fetch multiple artifacts concurrently."""
+    config = get_config(ctx)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task(
+            "Fetching multiple artifacts...", total=len(artifact_ids)
+        )
+        results = fetch_and_store_content_many(config.repo, artifact_ids)
+        progress.update(task, completed=len(artifact_ids))
+
+    for aid, status in results.items():
+        if status == "ok":
+            config.console.print(f"[green]Fetched artifact {aid} successfully.[/]")
+        elif status == "not_found":
+            config.error_console.print(f"[red]Artifact {aid} not found.[/]")
+        else:
+            config.error_console.print(
+                f"[red]Failed to fetch artifact {aid}: {status}[/]"
+            )
+
+
 @app.command(name="summarize")
 def summarize_content(ctx: typer.Context, artifact_id: int):
     """Fetches content for the specified artifact ID."""
     config = get_config(ctx)
     try:
-        summarizer = get_summarizer()
-        summarize_and_store_content(config.repo, summarizer, artifact_id)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("{task.description}"),
+            transient=True,
+        ) as progress:
+            progress.add_task(description="Summarizing...", total=None)
+            summarizer = get_summarizer()
+            summarize_and_store_content(config.repo, summarizer, artifact_id)
         config.console.print(
             f"[green]Content summarized for artifact ID {artifact_id}.[/]"
         )
     except ArtifactNotFoundError:
         config.error_console.print(f"Artifact with ID {artifact_id} not found.")
+        raise typer.Exit(code=1)
+    except InvalidContentError:
+        config.error_console.print(
+            f"Artifact with ID {artifact_id} has no raw content yet.\n"
+            f"Run `bookmarker fetch {artifact_id}` first."
+        )
         raise typer.Exit(code=1)
     except ContentSummaryError:
         config.error_console.print(
@@ -138,16 +185,19 @@ def show_artifact(ctx: typer.Context, artifact_id: int):
     if artifact is None:
         config.error_console.print(f"Artifact with ID {artifact_id} not found.")
         raise typer.Exit(code=1)
-    if artifact.content_raw is None and artifact.content_summary is None:
-        summary = (
-            "Content has not been fetched yet.\n"
-            f"Run `bookmarker fetch {artifact.id}`.\n"
-            f"Then run `bookmarker summarize {artifact.id}`."
-        )
-    elif artifact.content_summary is None:
-        summary = f"No summary yet. Run `bookmarker summarize {artifact.id}`"
+
+    if artifact.content_summary is None:
+        if artifact.content_raw is None:
+            summary = (
+                "Content has not been fetched yet.\n"
+                f"Run `bookmarker fetch {artifact.id}`.\n"
+                f"Then run `bookmarker summarize {artifact.id}`."
+            )
+        else:
+            summary = f"No summary yet. Run `bookmarker summarize {artifact.id}`"
     else:
         summary = escape(artifact.content_summary)
+
     text = Text(summary, justify="left")
     body = Padding(text, (1, 2))
     panel = Panel.fit(

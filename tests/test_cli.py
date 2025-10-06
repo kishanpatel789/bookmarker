@@ -6,6 +6,7 @@ from typer.testing import CliRunner
 from src.bookmarker.cli.main import (
     ContentFetchError,
     ContentSummaryError,
+    InvalidContentError,
     app,
 )
 from src.bookmarker.core.database import DatabaseRepository
@@ -106,6 +107,22 @@ def test_summarize_content_not_found():
 
     assert result.exit_code == 1
     assert "Artifact with ID 99 not found." in result.output
+
+
+@patch("src.bookmarker.cli.main.get_summarizer")
+@patch("src.bookmarker.cli.main.summarize_and_store_content")
+def test_summarize_content_invalid_content_error(
+    mock_summarize_store_func, mock_get_summarizer, add_artifact, db_setup
+):
+    mock_summarize_store_func.side_effect = InvalidContentError()
+    mock_summarizer = Mock()
+    mock_get_summarizer.return_value = mock_summarizer
+
+    result = runner.invoke(app, ["summarize", "1"])
+
+    assert result.exit_code == 1
+    assert "Artifact with ID 1 has no raw content yet." in result.output
+    mock_summarize_store_func.assert_called_once_with(db_setup, mock_summarizer, 1)
 
 
 @patch("src.bookmarker.cli.main.get_summarizer")
