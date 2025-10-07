@@ -44,6 +44,20 @@ def test_add_artifact(add_artifact):
     assert "https://example.com" in result.output
 
 
+def test_delete_artifact(add_artifact):
+    result = runner.invoke(app, ["delete", "1"])
+
+    assert result.exit_code == 0
+    assert "Deleted artifact with ID 1." in result.output
+
+
+def test_delete_artifact_not_found():
+    result = runner.invoke(app, ["delete", "99"])
+
+    assert result.exit_code == 1
+    assert "Artifact with ID 99 not found." in result.output
+
+
 def test_list_artifacts(add_artifact, add_another_artifact):
     result = runner.invoke(app, ["list"])
 

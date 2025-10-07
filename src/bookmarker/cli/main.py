@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import Annotated, NamedTuple
 
 import typer
 from rich.console import Console
@@ -47,11 +47,13 @@ def init(ctx: typer.Context):
 
 
 @app.command(name="add")
-def add_artifacts(
+def add_artifact(
     ctx: typer.Context,
-    title: str,
-    url: str,
-    artifact_type: ArtifactTypeEnum = ArtifactTypeEnum.ARTICLE,
+    title: Annotated[str, typer.Argument(help="The name of the artifact")],
+    url: Annotated[str, typer.Argument(help="The URL of the artifact")],
+    artifact_type: Annotated[
+        ArtifactTypeEnum, typer.Option(help="The type of the artifact")
+    ] = ArtifactTypeEnum.ARTICLE,
 ):
     """Adds an artifact with a title and URL."""
     config = get_config(ctx)
@@ -61,6 +63,23 @@ def add_artifacts(
     config.console.print(
         f"[green]Artifact added with ID {artifact.id}:[/] {artifact.title} - {artifact.url}"
     )
+
+
+@app.command(name="delete")
+def delete_artifact(
+    ctx: typer.Context,
+    artifact_id: Annotated[
+        int, typer.Argument(help="The ID of the artifact to delete")
+    ],
+):
+    """Deletes an artifact."""
+    config = get_config(ctx)
+    try:
+        config.repo.delete(artifact_id)
+        config.console.print(f"[green]Deleted artifact with ID {artifact_id}.[/]")
+    except ArtifactNotFoundError:
+        config.error_console.print(f"Artifact with ID {artifact_id} not found.")
+        raise typer.Exit(code=1)
 
 
 @app.command(name="list")
@@ -91,7 +110,12 @@ def list_artifacts(ctx: typer.Context):
 
 
 @app.command(name="fetch")
-def fetch_content(ctx: typer.Context, artifact_id: int):
+def fetch_content(
+    ctx: typer.Context,
+    artifact_id: Annotated[
+        int, typer.Argument(help="The ID of the artifact content to fetch")
+    ],
+):
     """Fetches content for the specified artifact ID."""
     from ..services.fetchers import fetch_and_store_content
 
@@ -118,8 +142,14 @@ def fetch_content(ctx: typer.Context, artifact_id: int):
 
 
 @app.command(name="fetch-many")
-def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
-    """Fetch multiple artifacts concurrently."""
+def fetch_content_many(
+    ctx: typer.Context,
+    artifact_ids: Annotated[
+        list[int],
+        typer.Argument(help="The IDs of the artifact content to fetch (e.g. `1 2 3`)"),
+    ],
+):
+    """Fetches multiple artifacts concurrently."""
     from ..services.fetchers import fetch_and_store_content_many
 
     config = get_config(ctx)
@@ -158,8 +188,13 @@ def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
 
 
 @app.command(name="summarize")
-def summarize_content(ctx: typer.Context, artifact_id: int):
-    """Fetches content for the specified artifact ID."""
+def summarize_content(
+    ctx: typer.Context,
+    artifact_id: Annotated[
+        int, typer.Argument(help="The ID of the artifact content to summarize")
+    ],
+):
+    """Summarizes content for the specified artifact ID."""
     from ..services.summarizers import summarize_and_store_content
 
     config = get_config(ctx)
@@ -191,8 +226,16 @@ def summarize_content(ctx: typer.Context, artifact_id: int):
 
 
 @app.command(name="summarize-many")
-def summarize_content_many(ctx: typer.Context, artifact_ids: list[int]):
-    """Fetch multiple artifacts concurrently."""
+def summarize_content_many(
+    ctx: typer.Context,
+    artifact_ids: Annotated[
+        list[int],
+        typer.Argument(
+            help="The IDs of the artifact content to summarize (e.g. `1 2 3`)"
+        ),
+    ],
+):
+    """Summarizes multiple artifacts concurrently."""
     from ..services.summarizers import summarize_and_store_content_many
 
     config = get_config(ctx)
@@ -231,8 +274,11 @@ def summarize_content_many(ctx: typer.Context, artifact_ids: list[int]):
 
 
 @app.command(name="show")
-def show_artifact(ctx: typer.Context, artifact_id: int):
-    """Show details for the specified artifact ID."""
+def show_artifact(
+    ctx: typer.Context,
+    artifact_id: Annotated[int, typer.Argument(help="The ID of the artifact to show")],
+):
+    """Shows details for the specified artifact ID."""
     config = get_config(ctx)
     artifact = config.repo.get(artifact_id)
     if artifact is None:
