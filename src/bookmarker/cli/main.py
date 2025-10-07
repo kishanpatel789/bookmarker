@@ -103,7 +103,7 @@ def fetch_content(ctx: typer.Context, artifact_id: int):
             transient=True,
         ) as progress:
             progress.add_task(description="Fetching...", total=None)
-            fetch_and_store_content(artifact_id, config.repo)
+            fetch_and_store_content(artifact_id, repo=config.repo)
         config.console.print(
             f"[green]Content fetched for artifact ID {artifact_id}.[/]"
         )
@@ -133,7 +133,7 @@ def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
             "Fetching multiple artifacts...", total=len(artifact_ids)
         )
         try:
-            results = fetch_and_store_content_many(artifact_ids, config.repo)
+            results = fetch_and_store_content_many(artifact_ids, repo=config.repo)
         except TimeoutError:
             bulk_fetch_timed_out = True
         finally:
@@ -170,7 +170,7 @@ def summarize_content(ctx: typer.Context, artifact_id: int):
             transient=True,
         ) as progress:
             progress.add_task(description="Summarizing...", total=None)
-            summarize_and_store_content(artifact_id, config.repo)
+            summarize_and_store_content(artifact_id, repo=config.repo)
         config.console.print(
             f"[green]Content summarized for artifact ID {artifact_id}.[/]"
         )
@@ -206,7 +206,7 @@ def summarize_content_many(ctx: typer.Context, artifact_ids: list[int]):
             "Summarizing multiple artifacts...", total=len(artifact_ids)
         )
         try:
-            results = summarize_and_store_content_many(artifact_ids, config.repo)
+            results = summarize_and_store_content_many(artifact_ids, repo=config.repo)
         except TimeoutError:
             bulk_summarize_timed_out = True
         finally:
