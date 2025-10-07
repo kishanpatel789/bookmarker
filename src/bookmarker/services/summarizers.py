@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 def summarize_content(
     artifact_id: int,
+    *,
     repo: DatabaseRepository,
     summarizer: ContentSummarizer,
 ) -> str | None:
@@ -30,12 +31,13 @@ def summarize_content(
 
 def summarize_and_store_content(
     artifact_id: int,
+    *,
     repo: DatabaseRepository,
     summarizer: ContentSummarizer | None = None,
 ) -> Artifact | None:
     if summarizer is None:
         summarizer = get_summarizer()
-    summary = summarize_content(artifact_id, repo, summarizer)
+    summary = summarize_content(artifact_id, repo=repo, summarizer=summarizer)
     if summary is not None:
         artifact = store_content(
             repo, artifact_id, summary, content_type=ContentType.SUMMARY
@@ -45,6 +47,7 @@ def summarize_and_store_content(
 
 def summarize_and_store_content_many(
     artifact_ids: list[int],
+    *,
     repo: DatabaseRepository,
     max_workers: int = 5,
 ) -> dict:

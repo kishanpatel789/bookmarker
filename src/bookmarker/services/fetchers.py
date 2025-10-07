@@ -16,7 +16,7 @@ FETCHERS = {
 }
 
 
-def fetch_content(artifact_id: int, repo: DatabaseRepository) -> str | None:
+def fetch_content(artifact_id: int, *, repo: DatabaseRepository) -> str | None:
     artifact = repo.get(artifact_id)
     if artifact is None:
         raise ArtifactNotFoundError(f"Artifact with ID {artifact_id} not found.")
@@ -31,9 +31,9 @@ def fetch_content(artifact_id: int, repo: DatabaseRepository) -> str | None:
 
 
 def fetch_and_store_content(
-    artifact_id: int, repo: DatabaseRepository
+    artifact_id: int, *, repo: DatabaseRepository
 ) -> Artifact | None:
-    content = fetch_content(repo, artifact_id)
+    content = fetch_content(artifact_id, repo=repo)
     if content is not None:
         artifact = store_content(
             repo, artifact_id, content, content_type=ContentType.RAW
@@ -42,7 +42,7 @@ def fetch_and_store_content(
 
 
 def fetch_and_store_content_many(
-    artifact_ids: list[int], repo: DatabaseRepository, max_workers: int = 5
+    artifact_ids: list[int], *, repo: DatabaseRepository, max_workers: int = 5
 ) -> dict:
     results = {}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
