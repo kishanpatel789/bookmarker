@@ -22,6 +22,7 @@ from ..core.main import (
     fetch_and_store_content_many,
     get_or_create_artifact,
     summarize_and_store_content,
+    summarize_and_store_content_many,
 )
 from ..core.summarizers import get_summarizer
 
@@ -123,6 +124,7 @@ def fetch_content(ctx: typer.Context, artifact_id: int):
 def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
     """Fetch multiple artifacts concurrently."""
     config = get_config(ctx)
+    bulk_fetch_timed_out = False
     with Progress(
         SpinnerColumn(),
         TextColumn("{task.description}"),
@@ -131,8 +133,19 @@ def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
         task = progress.add_task(
             "Fetching multiple artifacts...", total=len(artifact_ids)
         )
-        results = fetch_and_store_content_many(config.repo, artifact_ids)
-        progress.update(task, completed=len(artifact_ids))
+        try:
+            results = fetch_and_store_content_many(config.repo, artifact_ids)
+        except TimeoutError:
+            bulk_fetch_timed_out = True
+        finally:
+            progress.update(task, completed=len(artifact_ids))
+
+    # throw console error outside progress context manager for cleaner output
+    if bulk_fetch_timed_out:
+        config.error_console.print(
+            "[red]Exceeded time limit for bulk fetching. Try fetching fewer artifacts.[/]"
+        )
+        raise typer.Exit(code=1)
 
     for aid, status in results.items():
         if status == "ok":
@@ -175,6 +188,47 @@ def summarize_content(ctx: typer.Context, artifact_id: int):
             f"Error summarizing content for artifact ID {artifact_id}."
         )
         raise typer.Exit(code=1)
+
+
+@app.command(name="summarize-many")
+def summarize_content_many(ctx: typer.Context, artifact_ids: list[int]):
+    """Fetch multiple artifacts concurrently."""
+    config = get_config(ctx)
+    bulk_summarize_timed_out = False
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task(
+            "Summarizing multiple artifacts...", total=len(artifact_ids)
+        )
+        try:
+            summarizer = get_summarizer()
+            results = summarize_and_store_content_many(
+                config.repo, summarizer, artifact_ids
+            )
+        except TimeoutError:
+            bulk_summarize_timed_out = True
+        finally:
+            progress.update(task, completed=len(artifact_ids))
+
+    # throw console error outside progress context manager for cleaner output
+    if bulk_summarize_timed_out:
+        config.error_console.print(
+            "[red]Exceeded time limit for bulk summarizing. Try summarizing fewer artifacts.[/]"
+        )
+        raise typer.Exit(code=1)
+
+    for aid, status in results.items():
+        if status == "ok":
+            config.console.print(f"[green]Summarized artifact {aid} successfully.[/]")
+        elif status == "not_found":
+            config.error_console.print(f"[red]Artifact {aid} not found.[/]")
+        else:
+            config.error_console.print(
+                f"[red]Failed to summarize artifact {aid}: {status}[/]"
+            )
 
 
 @app.command(name="show")
