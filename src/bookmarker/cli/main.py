@@ -16,15 +16,10 @@ from ..core.exceptions import (
     ContentSummaryError,
     InvalidContentError,
 )
-from ..core.main import (
+from ..services.base import (
     ArtifactTypeEnum,
-    fetch_and_store_content,
-    fetch_and_store_content_many,
     get_or_create_artifact,
-    summarize_and_store_content,
-    summarize_and_store_content_many,
 )
-from ..core.summarizers import get_summarizer
 
 app = typer.Typer()
 
@@ -98,6 +93,8 @@ def list_artifacts(ctx: typer.Context):
 @app.command(name="fetch")
 def fetch_content(ctx: typer.Context, artifact_id: int):
     """Fetches content for the specified artifact ID."""
+    from ..services.fetchers import fetch_and_store_content
+
     config = get_config(ctx)
     try:
         with Progress(
@@ -106,7 +103,7 @@ def fetch_content(ctx: typer.Context, artifact_id: int):
             transient=True,
         ) as progress:
             progress.add_task(description="Fetching...", total=None)
-            fetch_and_store_content(config.repo, artifact_id)
+            fetch_and_store_content(artifact_id, config.repo)
         config.console.print(
             f"[green]Content fetched for artifact ID {artifact_id}.[/]"
         )
@@ -123,6 +120,8 @@ def fetch_content(ctx: typer.Context, artifact_id: int):
 @app.command(name="fetch-many")
 def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
     """Fetch multiple artifacts concurrently."""
+    from ..services.fetchers import fetch_and_store_content_many
+
     config = get_config(ctx)
     bulk_fetch_timed_out = False
     with Progress(
@@ -134,7 +133,7 @@ def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
             "Fetching multiple artifacts...", total=len(artifact_ids)
         )
         try:
-            results = fetch_and_store_content_many(config.repo, artifact_ids)
+            results = fetch_and_store_content_many(artifact_ids, config.repo)
         except TimeoutError:
             bulk_fetch_timed_out = True
         finally:
@@ -161,6 +160,8 @@ def fetch_content_many(ctx: typer.Context, artifact_ids: list[int]):
 @app.command(name="summarize")
 def summarize_content(ctx: typer.Context, artifact_id: int):
     """Fetches content for the specified artifact ID."""
+    from ..services.summarizers import summarize_and_store_content
+
     config = get_config(ctx)
     try:
         with Progress(
@@ -169,8 +170,7 @@ def summarize_content(ctx: typer.Context, artifact_id: int):
             transient=True,
         ) as progress:
             progress.add_task(description="Summarizing...", total=None)
-            summarizer = get_summarizer()
-            summarize_and_store_content(config.repo, summarizer, artifact_id)
+            summarize_and_store_content(artifact_id, config.repo)
         config.console.print(
             f"[green]Content summarized for artifact ID {artifact_id}.[/]"
         )
@@ -193,6 +193,8 @@ def summarize_content(ctx: typer.Context, artifact_id: int):
 @app.command(name="summarize-many")
 def summarize_content_many(ctx: typer.Context, artifact_ids: list[int]):
     """Fetch multiple artifacts concurrently."""
+    from ..services.summarizers import summarize_and_store_content_many
+
     config = get_config(ctx)
     bulk_summarize_timed_out = False
     with Progress(
@@ -204,10 +206,7 @@ def summarize_content_many(ctx: typer.Context, artifact_ids: list[int]):
             "Summarizing multiple artifacts...", total=len(artifact_ids)
         )
         try:
-            summarizer = get_summarizer()
-            results = summarize_and_store_content_many(
-                config.repo, summarizer, artifact_ids
-            )
+            results = summarize_and_store_content_many(artifact_ids, config.repo)
         except TimeoutError:
             bulk_summarize_timed_out = True
         finally:

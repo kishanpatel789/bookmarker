@@ -2,6 +2,8 @@ import logging
 
 from decouple import config
 
+TIMEOUT_MULTITHREADING = config("TIMEOUT_MULTITHREADING", 10, cast=int)
+
 
 def set_up_logging():
     DEBUG = config("DEBUG", cast=bool, default=False)
