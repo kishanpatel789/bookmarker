@@ -29,7 +29,7 @@ def test_trafilaturafetcher_fetch_success(mock_fetch_url, mock_extract):
 
 
 @patch("src.bookmarker.core.fetchers.fetch_url")
-def test_trafilaturafetcher_fetch_failure(mock_fetch_url):
+def test_trafilaturafetcher_get_content_failure(mock_fetch_url):
     mock_fetch_url.return_value = None
 
     fetcher = TrafilaturaFetcher()
@@ -37,3 +37,14 @@ def test_trafilaturafetcher_fetch_failure(mock_fetch_url):
     with pytest.raises(ContentFetchError) as excinfo:
         fetcher.fetch("https://example.com")
     assert "Failed to get content from URL" in str(excinfo.value)
+
+
+@patch("src.bookmarker.core.fetchers.extract")
+def test_trafilaturafetcher_parse_content_failure(mock_extract):
+    mock_extract.return_value = None
+
+    fetcher = TrafilaturaFetcher()
+
+    with pytest.raises(ContentFetchError) as excinfo:
+        fetcher.fetch("https://example.com")
+    assert "Failed to parse content from URL" in str(excinfo.value)

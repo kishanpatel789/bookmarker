@@ -44,6 +44,20 @@ def test_add_artifact(add_artifact):
     assert "https://example.com" in result.output
 
 
+def test_delete_artifact(add_artifact):
+    result = runner.invoke(app, ["delete", "1"])
+
+    assert result.exit_code == 0
+    assert "Deleted artifact with ID 1." in result.output
+
+
+def test_delete_artifact_not_found():
+    result = runner.invoke(app, ["delete", "99"])
+
+    assert result.exit_code == 1
+    assert "Artifact with ID 99 not found." in result.output
+
+
 def test_list_artifacts(add_artifact, add_another_artifact):
     result = runner.invoke(app, ["list"])
 
@@ -62,13 +76,13 @@ def test_list_artifacts_empty():
     assert "No artifacts found." in result.output
 
 
-@patch("src.bookmarker.cli.main.fetch_and_store_content")
+@patch("src.bookmarker.services.fetchers.fetch_and_store_content")
 def test_fetch_content(mock_fetch_store_func, add_artifact, db_setup):
     result = runner.invoke(app, ["fetch", "1"])
 
     assert result.exit_code == 0
     assert "Content fetched for artifact ID 1." in result.output
-    mock_fetch_store_func.assert_called_once_with(db_setup, 1)
+    mock_fetch_store_func.assert_called_once_with(1, repo=db_setup)
 
 
 def test_fetch_content_not_found():
@@ -78,7 +92,7 @@ def test_fetch_content_not_found():
     assert "Artifact with ID 99 not found." in result.output
 
 
-@patch("src.bookmarker.cli.main.fetch_and_store_content")
+@patch("src.bookmarker.services.fetchers.fetch_and_store_content")
 def test_fetch_content_fetch_error(mock_fetch_store_func, add_artifact):
     mock_fetch_store_func.side_effect = ContentFetchError()
 
@@ -88,7 +102,7 @@ def test_fetch_content_fetch_error(mock_fetch_store_func, add_artifact):
     assert "Error fetching content for artifact ID 1." in result.output
 
 
-@patch("src.bookmarker.cli.main.fetch_and_store_content_many")
+@patch("src.bookmarker.services.fetchers.fetch_and_store_content_many")
 def test_fetch_content_many(mock_fetch_store_func, add_artifact, db_setup):
     mock_fetch_store_func.return_value = {1: "ok", 2: "ok", 3: "ok"}
 
@@ -98,10 +112,10 @@ def test_fetch_content_many(mock_fetch_store_func, add_artifact, db_setup):
     assert "Fetched artifact 1 successfully." in result.output
     assert "Fetched artifact 2 successfully." in result.output
     assert "Fetched artifact 3 successfully." in result.output
-    mock_fetch_store_func.assert_called_once_with(db_setup, [1, 2, 3])
+    mock_fetch_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
-@patch("src.bookmarker.cli.main.fetch_and_store_content_many")
+@patch("src.bookmarker.services.fetchers.fetch_and_store_content_many")
 def test_fetch_content_many_not_found(mock_fetch_store_func, add_artifact, db_setup):
     mock_fetch_store_func.return_value = {1: "ok", 2: "not_found", 3: "ok"}
 
@@ -111,10 +125,10 @@ def test_fetch_content_many_not_found(mock_fetch_store_func, add_artifact, db_se
     assert "Fetched artifact 1 successfully." in result.output
     assert "Artifact 2 not found." in result.output
     assert "Fetched artifact 3 successfully." in result.output
-    mock_fetch_store_func.assert_called_once_with(db_setup, [1, 2, 3])
+    mock_fetch_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
-@patch("src.bookmarker.cli.main.fetch_and_store_content_many")
+@patch("src.bookmarker.services.fetchers.fetch_and_store_content_many")
 def test_fetch_content_many_error(mock_fetch_store_func, add_artifact, db_setup):
     mock_fetch_store_func.return_value = {
         1: "ok",
@@ -128,10 +142,10 @@ def test_fetch_content_many_error(mock_fetch_store_func, add_artifact, db_setup)
     assert "Fetched artifact 1 successfully." in result.output
     assert "Failed to fetch artifact 2: fetch_error" in result.output
     assert "Failed to fetch artifact 3: exception: other" in result.output
-    mock_fetch_store_func.assert_called_once_with(db_setup, [1, 2, 3])
+    mock_fetch_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
-@patch("src.bookmarker.cli.main.fetch_and_store_content_many")
+@patch("src.bookmarker.services.fetchers.fetch_and_store_content_many")
 def test_fetch_content_many_timeout(mock_fetch_store_func, add_artifact, db_setup):
     mock_fetch_store_func.side_effect = TimeoutError
 
@@ -139,21 +153,16 @@ def test_fetch_content_many_timeout(mock_fetch_store_func, add_artifact, db_setu
 
     assert result.exit_code == 1
     assert "Exceeded time limit for bulk fetching." in result.output
-    mock_fetch_store_func.assert_called_once_with(db_setup, [1, 2, 3])
+    mock_fetch_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
-@patch("src.bookmarker.cli.main.get_summarizer")
-@patch("src.bookmarker.cli.main.summarize_and_store_content")
-def test_summarize_content(
-    mock_summarize_store_func, mock_get_summarizer, add_artifact, db_setup
-):
-    mock_summarizer = Mock()
-    mock_get_summarizer.return_value = mock_summarizer
+@patch("src.bookmarker.services.summarizers.summarize_and_store_content")
+def test_summarize_content(mock_summarize_store_func, add_artifact, db_setup):
     result = runner.invoke(app, ["summarize", "1"])
 
     assert result.exit_code == 0
     assert "Content summarized for artifact ID 1." in result.output
-    mock_summarize_store_func.assert_called_once_with(db_setup, mock_summarizer, 1)
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup)
 
 
 def test_summarize_content_not_found():
@@ -163,45 +172,34 @@ def test_summarize_content_not_found():
     assert "Artifact with ID 99 not found." in result.output
 
 
-@patch("src.bookmarker.cli.main.get_summarizer")
-@patch("src.bookmarker.cli.main.summarize_and_store_content")
+@patch("src.bookmarker.services.summarizers.summarize_and_store_content")
 def test_summarize_content_invalid_content_error(
-    mock_summarize_store_func, mock_get_summarizer, add_artifact, db_setup
+    mock_summarize_store_func, add_artifact, db_setup
 ):
     mock_summarize_store_func.side_effect = InvalidContentError()
-    mock_summarizer = Mock()
-    mock_get_summarizer.return_value = mock_summarizer
 
     result = runner.invoke(app, ["summarize", "1"])
 
     assert result.exit_code == 1
     assert "Artifact with ID 1 has no raw content yet." in result.output
-    mock_summarize_store_func.assert_called_once_with(db_setup, mock_summarizer, 1)
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup)
 
 
-@patch("src.bookmarker.cli.main.get_summarizer")
-@patch("src.bookmarker.cli.main.summarize_and_store_content")
+@patch("src.bookmarker.services.summarizers.summarize_and_store_content")
 def test_summarize_content_summarize_error(
-    mock_summarize_store_func, mock_get_summarizer, add_artifact, db_setup
+    mock_summarize_store_func, add_artifact, db_setup
 ):
     mock_summarize_store_func.side_effect = ContentSummaryError()
-    mock_summarizer = Mock()
-    mock_get_summarizer.return_value = mock_summarizer
 
     result = runner.invoke(app, ["summarize", "1"])
 
     assert result.exit_code == 1
     assert "Error summarizing content for artifact ID 1." in result.output
-    mock_summarize_store_func.assert_called_once_with(db_setup, mock_summarizer, 1)
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup)
 
 
-@patch("src.bookmarker.cli.main.get_summarizer")
-@patch("src.bookmarker.cli.main.summarize_and_store_content_many")
-def test_summarize_content_many(
-    mock_summarize_store_func, mock_get_summarizer, db_setup
-):
-    mock_summarizer = Mock()
-    mock_get_summarizer.return_value = mock_summarizer
+@patch("src.bookmarker.services.summarizers.summarize_and_store_content_many")
+def test_summarize_content_many(mock_summarize_store_func, db_setup):
     mock_summarize_store_func.return_value = {1: "ok", 2: "ok", 3: "ok"}
 
     result = runner.invoke(app, ["summarize-many", "1", "2", "3"])
@@ -210,18 +208,11 @@ def test_summarize_content_many(
     assert "Summarized artifact 1 successfully." in result.output
     assert "Summarized artifact 2 successfully." in result.output
     assert "Summarized artifact 3 successfully." in result.output
-    mock_summarize_store_func.assert_called_once_with(
-        db_setup, mock_summarizer, [1, 2, 3]
-    )
+    mock_summarize_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
-@patch("src.bookmarker.cli.main.get_summarizer")
-@patch("src.bookmarker.cli.main.summarize_and_store_content_many")
-def test_summarize_content_many_not_found(
-    mock_summarize_store_func, mock_get_summarizer, db_setup
-):
-    mock_summarizer = Mock()
-    mock_get_summarizer.return_value = mock_summarizer
+@patch("src.bookmarker.services.summarizers.summarize_and_store_content_many")
+def test_summarize_content_many_not_found(mock_summarize_store_func, db_setup):
     mock_summarize_store_func.return_value = {1: "ok", 2: "not_found", 3: "ok"}
 
     result = runner.invoke(app, ["summarize-many", "1", "2", "3"])
@@ -230,18 +221,11 @@ def test_summarize_content_many_not_found(
     assert "Summarized artifact 1 successfully." in result.output
     assert "Artifact 2 not found." in result.output
     assert "Summarized artifact 3 successfully." in result.output
-    mock_summarize_store_func.assert_called_once_with(
-        db_setup, mock_summarizer, [1, 2, 3]
-    )
+    mock_summarize_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
-@patch("src.bookmarker.cli.main.get_summarizer")
-@patch("src.bookmarker.cli.main.summarize_and_store_content_many")
-def test_summarize_content_many_error(
-    mock_summarize_store_func, mock_get_summarizer, db_setup
-):
-    mock_summarizer = Mock()
-    mock_get_summarizer.return_value = mock_summarizer
+@patch("src.bookmarker.services.summarizers.summarize_and_store_content_many")
+def test_summarize_content_many_error(mock_summarize_store_func, db_setup):
     mock_summarize_store_func.return_value = {
         1: "ok",
         2: "summarize_error",
@@ -254,18 +238,11 @@ def test_summarize_content_many_error(
     assert "Summarized artifact 1 successfully." in result.output
     assert "Failed to summarize artifact 2: summarize_error" in result.output
     assert "Failed to summarize artifact 3: exception: other" in result.output
-    mock_summarize_store_func.assert_called_once_with(
-        db_setup, mock_summarizer, [1, 2, 3]
-    )
+    mock_summarize_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
-@patch("src.bookmarker.cli.main.get_summarizer")
-@patch("src.bookmarker.cli.main.summarize_and_store_content_many")
-def test_summarize_content_many_timeout(
-    mock_summarize_store_func, mock_get_summarizer, db_setup
-):
-    mock_summarizer = Mock()
-    mock_get_summarizer.return_value = mock_summarizer
+@patch("src.bookmarker.services.summarizers.summarize_and_store_content_many")
+def test_summarize_content_many_timeout(mock_summarize_store_func, db_setup):
     mock_summarize_store_func.return_value = {
         1: "ok",
         2: "summarize_error",
@@ -277,9 +254,7 @@ def test_summarize_content_many_timeout(
 
     assert result.exit_code == 1
     assert "Exceeded time limit for bulk summarizing." in result.output
-    mock_summarize_store_func.assert_called_once_with(
-        db_setup, mock_summarizer, [1, 2, 3]
-    )
+    mock_summarize_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
 @patch("src.bookmarker.cli.main.get_repo")
