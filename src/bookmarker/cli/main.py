@@ -250,10 +250,13 @@ def summarize_content(
             transient=True,
         ) as progress:
             progress.add_task(description="Summarizing...", total=None)
-            summarize_and_store_content(artifact_id, repo=config.repo)
+            artifact = summarize_and_store_content(artifact_id, repo=config.repo)
         config.console.print(
             f"[green]Content summarized for artifact ID {artifact_id}.[/]"
         )
+        if artifact is not None:
+            panel = generate_panel(artifact)
+            config.console.print(panel)
     except ArtifactNotFoundError:
         config.error_console.print(f"Artifact with ID {artifact_id} not found.")
         raise typer.Exit(code=1)

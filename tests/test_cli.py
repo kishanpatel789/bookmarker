@@ -156,12 +156,19 @@ def test_fetch_content_many_timeout(mock_fetch_store_func, add_artifact, db_setu
     mock_fetch_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
+@patch("src.bookmarker.cli.main.generate_panel")
 @patch("src.bookmarker.services.summarizers.summarize_and_store_content")
-def test_summarize_content(mock_summarize_store_func, add_artifact, db_setup):
+def test_summarize_content(
+    mock_summarize_store_func, mock_generate_panel, add_artifact, db_setup
+):
+    mock_summarize_store_func.return_value = add_artifact
+    mock_generate_panel.return_value = "<Panel>"
+
     result = runner.invoke(app, ["summarize", "1"])
 
     assert result.exit_code == 0
     assert "Content summarized for artifact ID 1." in result.output
+    assert "<Panel>" in result.output
     mock_summarize_store_func.assert_called_once_with(1, repo=db_setup)
 
 
