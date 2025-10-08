@@ -14,6 +14,7 @@ from ..core.exceptions import (
     ArtifactNotFoundError,
     ContentFetchError,
     ContentSummaryError,
+    ContentSummaryExistsWarning,
     InvalidContentError,
 )
 from ..core.models import Artifact
@@ -238,6 +239,7 @@ def summarize_content(
     artifact_id: Annotated[
         int, typer.Argument(help="The ID of the artifact content to summarize")
     ],
+    refresh: Annotated[bool, typer.Option(help="Force summary refresh")] = False,
 ):
     """Summarize content for the specified artifact ID."""
     from ..services.summarizers import summarize_and_store_content
@@ -250,7 +252,9 @@ def summarize_content(
             transient=True,
         ) as progress:
             progress.add_task(description="Summarizing...", total=None)
-            artifact = summarize_and_store_content(artifact_id, repo=config.repo)
+            artifact = summarize_and_store_content(
+                artifact_id, repo=config.repo, refresh=refresh
+            )
         config.console.print(
             f"[green]Content summarized for artifact ID {artifact_id}.[/]"
         )
@@ -260,6 +264,11 @@ def summarize_content(
     except ArtifactNotFoundError:
         config.error_console.print(f"Artifact with ID {artifact_id} not found.")
         raise typer.Exit(code=1)
+    except ContentSummaryExistsWarning:
+        config.error_console.print(
+            f"Artifact with ID {artifact_id} already has summary.\n"
+            "Use `--refresh` option to get a new summary."
+        )
     except InvalidContentError:
         config.error_console.print(
             f"Artifact with ID {artifact_id} has no raw content yet.\n"

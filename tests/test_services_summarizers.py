@@ -7,6 +7,7 @@ from src.bookmarker.services.base import get_or_create_artifact
 from src.bookmarker.services.summarizers import (
     ArtifactNotFoundError,
     ContentSummaryError,
+    ContentSummaryExistsWarning,
     ContentType,
     summarize_and_store_content,
     summarize_and_store_content_many,
@@ -46,6 +47,20 @@ def test_summarize_content_article_not_found(db_repo):
     mock_summarizer.summarize.assert_not_called()
 
 
+def test_summarize_content_summary_exists():
+    mock_repo = Mock()
+    mock_artifact = Mock(
+        id=1,
+        content_raw="This is article content.",
+        content_summary="This is a summary.",
+    )
+    mock_repo.get.return_value = mock_artifact
+    mock_summarizer = Mock()
+
+    with pytest.raises(ContentSummaryExistsWarning):
+        summarize_content(1, repo=mock_repo, summarizer=mock_summarizer, refresh=False)
+
+
 def test_summarize_content_summary_error(db_repo, add_article):
     artifact = add_article
     mock_summarizer = Mock()
@@ -70,7 +85,7 @@ def test_summarize_and_store_content(
     )
 
     mock_summarize_content.assert_called_once_with(
-        1, repo=db_repo, summarizer=mock_get_summarizer
+        1, repo=db_repo, summarizer=mock_get_summarizer, refresh=False
     )
     mock_store_content.assert_called_once_with(
         db_repo, 1, "Test Summary", content_type=ContentType.SUMMARY

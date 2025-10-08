@@ -6,6 +6,7 @@ from typer.testing import CliRunner
 from src.bookmarker.cli.main import (
     ContentFetchError,
     ContentSummaryError,
+    ContentSummaryExistsWarning,
     InvalidContentError,
     app,
 )
@@ -169,7 +170,7 @@ def test_summarize_content(
     assert result.exit_code == 0
     assert "Content summarized for artifact ID 1." in result.output
     assert "<Panel>" in result.output
-    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup)
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup, refresh=False)
 
 
 def test_summarize_content_not_found():
@@ -177,6 +178,19 @@ def test_summarize_content_not_found():
 
     assert result.exit_code == 1
     assert "Artifact with ID 99 not found." in result.output
+
+
+@patch("src.bookmarker.services.summarizers.summarize_and_store_content")
+def test_summarize_content_summary_exists_warning(
+    mock_summarize_store_func, add_artifact, db_setup
+):
+    mock_summarize_store_func.side_effect = ContentSummaryExistsWarning()
+
+    result = runner.invoke(app, ["summarize", "1"])
+
+    assert result.exit_code == 0
+    assert "Artifact with ID 1 already has summary." in result.output
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup, refresh=False)
 
 
 @patch("src.bookmarker.services.summarizers.summarize_and_store_content")
@@ -189,7 +203,7 @@ def test_summarize_content_invalid_content_error(
 
     assert result.exit_code == 1
     assert "Artifact with ID 1 has no raw content yet." in result.output
-    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup)
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup, refresh=False)
 
 
 @patch("src.bookmarker.services.summarizers.summarize_and_store_content")
@@ -202,7 +216,7 @@ def test_summarize_content_summarize_error(
 
     assert result.exit_code == 1
     assert "Error summarizing content for artifact ID 1." in result.output
-    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup)
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup, refresh=False)
 
 
 @patch("src.bookmarker.services.summarizers.summarize_and_store_content_many")

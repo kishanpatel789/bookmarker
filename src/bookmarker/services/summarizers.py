@@ -3,7 +3,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..core.config import TIMEOUT_MULTITHREADING
 from ..core.database import DatabaseRepository
-from ..core.exceptions import ArtifactNotFoundError, ContentSummaryError
+from ..core.exceptions import (
+    ArtifactNotFoundError,
+    ContentSummaryError,
+    ContentSummaryExistsWarning,
+)
 from ..core.models import Artifact
 from ..core.summarizers import ContentSummarizer, get_summarizer
 from .base import ContentType, store_content
@@ -16,10 +20,16 @@ def summarize_content(
     *,
     repo: DatabaseRepository,
     summarizer: ContentSummarizer,
+    refresh: bool = False,
 ) -> str | None:
     artifact = repo.get(artifact_id)
     if artifact is None:
         raise ArtifactNotFoundError(f"Artifact with ID {artifact_id} not found.")
+
+    if (refresh is False) and (artifact.content_summary is not None):
+        raise ContentSummaryExistsWarning(
+            f"Summary already exists for artifact {artifact_id}"
+        )
 
     try:
         summary = summarizer.summarize(artifact.content_raw)
@@ -34,10 +44,13 @@ def summarize_and_store_content(
     *,
     repo: DatabaseRepository,
     summarizer: ContentSummarizer | None = None,
+    refresh: bool = False,
 ) -> Artifact | None:
     if summarizer is None:
         summarizer = get_summarizer()
-    summary = summarize_content(artifact_id, repo=repo, summarizer=summarizer)
+    summary = summarize_content(
+        artifact_id, repo=repo, summarizer=summarizer, refresh=refresh
+    )
     if summary is not None:
         artifact = store_content(
             repo, artifact_id, summary, content_type=ContentType.SUMMARY
