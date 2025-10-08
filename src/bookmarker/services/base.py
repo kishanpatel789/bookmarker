@@ -2,7 +2,7 @@ import logging
 from enum import Enum, auto
 
 from ..core.database import DatabaseRepository
-from ..core.models import Artifact, ArtifactTypeEnum
+from ..core.models import Artifact, ArtifactTypeEnum, Tag
 
 logger = logging.getLogger(__name__)
 
@@ -49,4 +49,16 @@ def store_content(
             artifact = repo.store_content_summary(artifact_id, content)
         case _:
             raise ValueError(f"Unsupported content type: {content_type}")
+    return artifact
+
+
+def update_tags(
+    repo: DatabaseRepository,
+    artifact_id: int,
+    tags: list[str],
+    *,
+    remove: bool,
+) -> Artifact:
+    tag_objs = [Tag(name=tag) for tag in tags]
+    artifact = repo.tag(artifact_id, *tag_objs, remove=remove)
     return artifact

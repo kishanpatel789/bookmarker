@@ -1,7 +1,7 @@
 from typing import Annotated, NamedTuple
 
 import typer
-from rich.console import Console
+from rich.console import Console, Group
 from rich.markup import escape
 from rich.padding import Padding
 from rich.panel import Panel
@@ -16,9 +16,11 @@ from ..core.exceptions import (
     ContentSummaryError,
     InvalidContentError,
 )
+from ..core.models import Artifact
 from ..services.base import (
     ArtifactTypeEnum,
     get_or_create_artifact,
+    update_tags,
 )
 
 app = typer.Typer()
@@ -32,6 +34,49 @@ class AppConfig(NamedTuple):
 
 def get_config(ctx: typer.Context) -> AppConfig:
     return ctx.obj
+
+
+def generate_panel(artifact: Artifact) -> Panel:
+    """Generate a rich panel for displaying a artifact."""
+
+    title_text = Text(artifact.title, style="bold")
+
+    body_elements = []
+    if len(artifact.tags) > 0:
+        body_elements.append(
+            Text(
+                " ".join(f"#{tag.name}" for tag in artifact.tags),
+                style="dim",
+                justify="center",
+            )
+        )
+
+    if artifact.content_summary is None:
+        if artifact.content_raw is None:
+            summary = (
+                "Content has not been fetched yet.\n"
+                f"Run `bookmarker fetch {artifact.id}`.\n"
+                f"Then run `bookmarker summarize {artifact.id}`."
+            )
+        else:
+            summary = f"No summary yet. Run `bookmarker summarize {artifact.id}`"
+    else:
+        summary = escape(artifact.content_summary)
+    summary_text = Text(summary, justify="left")
+    summary_padding = Padding(summary_text, (1, 2))
+    body_elements.append(summary_padding)
+
+    body = Group(*body_elements)
+
+    panel = Panel.fit(
+        body,
+        title=title_text,
+        subtitle=artifact.url,
+        subtitle_align="right",
+        border_style="cyan",
+    )
+
+    return panel
 
 
 @app.callback()
@@ -55,7 +100,7 @@ def add_artifact(
         ArtifactTypeEnum, typer.Option(help="The type of the artifact")
     ] = ArtifactTypeEnum.ARTICLE,
 ):
-    """Adds an artifact with a title and URL."""
+    """Add an artifact with a title and URL."""
     config = get_config(ctx)
     artifact = get_or_create_artifact(
         config.repo, title=title, url=url, artifact_type=artifact_type
@@ -72,7 +117,7 @@ def delete_artifact(
         int, typer.Argument(help="The ID of the artifact to delete")
     ],
 ):
-    """Deletes an artifact."""
+    """Delete an artifact."""
     config = get_config(ctx)
     try:
         config.repo.delete(artifact_id)
@@ -84,7 +129,7 @@ def delete_artifact(
 
 @app.command(name="list")
 def list_artifacts(ctx: typer.Context):
-    """Lists all artifacts."""
+    """List all artifacts."""
     config = get_config(ctx)
     artifacts = config.repo.list()
     if artifacts:
@@ -116,7 +161,7 @@ def fetch_content(
         int, typer.Argument(help="The ID of the artifact content to fetch")
     ],
 ):
-    """Fetches content for the specified artifact ID."""
+    """Fetch content for the specified artifact ID."""
     from ..services.fetchers import fetch_and_store_content
 
     config = get_config(ctx)
@@ -149,7 +194,7 @@ def fetch_content_many(
         typer.Argument(help="The IDs of the artifact content to fetch (e.g. `1 2 3`)"),
     ],
 ):
-    """Fetches multiple artifacts concurrently."""
+    """Fetch multiple artifacts concurrently."""
     from ..services.fetchers import fetch_and_store_content_many
 
     config = get_config(ctx)
@@ -194,7 +239,7 @@ def summarize_content(
         int, typer.Argument(help="The ID of the artifact content to summarize")
     ],
 ):
-    """Summarizes content for the specified artifact ID."""
+    """Summarize content for the specified artifact ID."""
     from ..services.summarizers import summarize_and_store_content
 
     config = get_config(ctx)
@@ -235,7 +280,7 @@ def summarize_content_many(
         ),
     ],
 ):
-    """Summarizes multiple artifacts concurrently."""
+    """Summarize multiple artifacts concurrently."""
     from ..services.summarizers import summarize_and_store_content_many
 
     config = get_config(ctx)
@@ -278,32 +323,35 @@ def show_artifact(
     ctx: typer.Context,
     artifact_id: Annotated[int, typer.Argument(help="The ID of the artifact to show")],
 ):
-    """Shows details for the specified artifact ID."""
+    """Show details for the specified artifact ID."""
     config = get_config(ctx)
     artifact = config.repo.get(artifact_id)
     if artifact is None:
         config.error_console.print(f"Artifact with ID {artifact_id} not found.")
         raise typer.Exit(code=1)
 
-    if artifact.content_summary is None:
-        if artifact.content_raw is None:
-            summary = (
-                "Content has not been fetched yet.\n"
-                f"Run `bookmarker fetch {artifact.id}`.\n"
-                f"Then run `bookmarker summarize {artifact.id}`."
-            )
-        else:
-            summary = f"No summary yet. Run `bookmarker summarize {artifact.id}`"
-    else:
-        summary = escape(artifact.content_summary)
-
-    text = Text(summary, justify="left")
-    body = Padding(text, (1, 2))
-    panel = Panel.fit(
-        body,
-        title=f"[bold]{artifact.title}[/]",
-        subtitle=artifact.url,
-        subtitle_align="right",
-        border_style="cyan",
-    )
+    panel = generate_panel(artifact)
     config.console.print(panel)
+
+
+@app.command(name="tag")
+def tag_artifact(
+    ctx: typer.Context,
+    artifact_id: Annotated[int, typer.Argument(help="The ID of artifact to update")],
+    tags: Annotated[list[str], typer.Argument(help="Tags to add or remove")],
+    remove: Annotated[
+        bool, typer.Option("--remove", help="Remove tag instead of adding")
+    ] = False,
+):
+    """Add or remove tags from an artifact."""
+    config = get_config(ctx)
+    try:
+        artifact = update_tags(config.repo, artifact_id, tags, remove=remove)
+        config.console.print(
+            f"[green]Updated tags successfully for artifact {artifact_id}.[/]"
+        )
+        panel = generate_panel(artifact)
+        config.console.print(panel)
+    except ArtifactNotFoundError:
+        config.error_console.print(f"Artifact with ID {artifact_id} not found.")
+        raise typer.Exit(code=1)

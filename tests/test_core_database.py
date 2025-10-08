@@ -43,7 +43,17 @@ def test_add_artifact(add_article):
     assert artifact.content_raw is None
     assert artifact.content_summary is None
     assert artifact.created_at is not None
-    assert artifact.updated_at is None
+    assert artifact.updated_at is not None
+
+
+def test_add_artifact_with_tags(db_repo, add_article):
+    artifact = db_repo.get(1)
+    assert artifact.tags == add_article.tags
+
+
+def test_add_artifact_without_tags(db_repo, add_another_article):
+    artifact = db_repo.get(1)
+    assert artifact.tags == []
 
 
 def test_list_artifacts(db_repo, add_article, add_another_article):
@@ -103,3 +113,56 @@ def test_store_content_raw(db_repo, add_article):
 def test_store_content_raw_not_found(db_repo, add_article):
     with pytest.raises(ArtifactNotFoundError):
         db_repo.store_content_raw(99, "#Test header")
+
+
+def test_store_content_summary(db_repo, add_article):
+    artifact = db_repo.store_content_summary(add_article.id, "Test summary")
+
+    assert artifact.id == 1
+    assert artifact.content_summary == "Test summary"
+
+
+def test_store_content_summary_not_found(db_repo, add_article):
+    with pytest.raises(ArtifactNotFoundError):
+        db_repo.store_content_summary(99, "Test summary")
+
+
+def test_add_tag(db_repo, add_another_article):
+    tag1 = Tag(name="Test Tag")
+    tag2 = Tag(name="Test Tag 2")
+    db_repo.tag(add_another_article.id, tag1, tag2)
+    artifact = db_repo.get(add_another_article.id)
+    assert len(artifact.tags) == 2
+    assert artifact.tags[0].name == "test-tag"
+
+
+def test_remove_tag(db_repo, add_another_article):
+    tag1 = Tag(name="Test Tag")
+    tag2 = Tag(name="Test Tag 2")
+    db_repo.tag(add_another_article.id, tag1, tag2)
+    db_repo.tag(add_another_article.id, tag1, remove=True)
+    artifact = db_repo.get(add_another_article.id)
+
+    assert len(artifact.tags) == 1
+    assert artifact.tags[0].name == "test-tag-2"
+
+
+def test_tag_add_remove_artifact_not_found(db_repo):
+    tag1 = Tag(name="Test Tag")
+    with pytest.raises(ArtifactNotFoundError):
+        db_repo.tag(99, tag1)
+
+
+def test_no_duplicate_tag_added(db_repo, add_another_article):
+    tag1 = Tag(name="Test Tag")
+    db_repo.tag(add_another_article.id, tag1)
+    db_repo.tag(add_another_article.id, tag1)
+    artifact = db_repo.get(add_another_article.id)
+    assert len(artifact.tags) == 1
+    assert artifact.tags[0].name == "test-tag"
+
+
+def test_no_duplicate_tag_added_db(db_repo, add_article, add_another_article):
+    db_repo.tag(add_another_article.id, Tag(name="python"))
+    artifact = db_repo.get(add_another_article.id)
+    assert artifact.tags[0].id == add_article.tags[0].id

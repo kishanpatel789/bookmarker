@@ -1,9 +1,13 @@
+from unittest.mock import Mock
+
 import pytest
 
 from src.bookmarker.services.base import (
     ContentType,
+    Tag,
     get_or_create_artifact,
     store_content,
+    update_tags,
 )
 
 
@@ -61,3 +65,19 @@ def test_store_content_bad_type(db_repo, add_article):
 
     with pytest.raises(ValueError):
         store_content(db_repo, artifact.id, "Test summary", content_type="bad type")
+
+
+def test_update_tags_adds_tags():
+    mock_repo = Mock()
+    mock_artifact = Mock(id=1, tags=["python", "ai"])
+    mock_repo.tag.return_value = mock_artifact
+
+    tags = ["python", "ai"]
+    result = update_tags(mock_repo, 1, tags, remove=False)
+
+    assert result == mock_artifact
+    mock_repo.tag.assert_called_once()
+    called_args, called_kwargs = mock_repo.tag.call_args
+    assert called_args[0] == 1
+    assert all(isinstance(t, Tag) for t in called_args[1:])
+    assert called_kwargs["remove"] is False
