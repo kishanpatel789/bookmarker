@@ -1,5 +1,5 @@
 [project]
-name = "bookmarker"
+name = "bookmarker-ai"
 version = "0.1.0"
 description = "A CLI tool to manage the online articles you want to read. Too much content and too little time? Bookmarker helps you pick what to read."
 readme = "README.md"
@@ -29,6 +29,12 @@ dev = [
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
 ]
+
+[tool.hatch.build]
+only-packages = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/snipster"]
 
 [tool.poe.tasks]
 test = "pytest"
