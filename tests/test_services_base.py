@@ -64,7 +64,7 @@ def test_store_content_bad_type(db_repo, add_article):
     artifact = add_article
 
     with pytest.raises(ValueError):
-        store_content(db_repo, artifact.id, "Test summary", content_type="bad type")
+        store_content(db_repo, artifact.id, "Test summary", content_type="bad type")  # ty: ignore[invalid-argument-type]
 
 
 def test_update_tags_adds_tags():

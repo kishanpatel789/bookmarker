@@ -1,8 +1,9 @@
 import logging
+from typing import Final
 
 from decouple import config
 
-TIMEOUT_MULTITHREADING = config("TIMEOUT_MULTITHREADING", 10, cast=int)
+TIMEOUT_MULTITHREADING: Final[int] = config("TIMEOUT_MULTITHREADING", 10, cast=int)
 
 
 def set_up_logging():
