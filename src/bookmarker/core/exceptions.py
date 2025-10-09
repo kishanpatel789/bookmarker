@@ -12,3 +12,7 @@ class InvalidContentError(Exception):
 
 class ContentSummaryError(Exception):
     pass
+
+
+class ContentSummaryExistsWarning(Exception):
+    pass

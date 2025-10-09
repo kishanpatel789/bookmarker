@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from typer.testing import CliRunner
@@ -6,6 +6,7 @@ from typer.testing import CliRunner
 from src.bookmarker.cli.main import (
     ContentFetchError,
     ContentSummaryError,
+    ContentSummaryExistsWarning,
     InvalidContentError,
     app,
 )
@@ -156,13 +157,20 @@ def test_fetch_content_many_timeout(mock_fetch_store_func, add_artifact, db_setu
     mock_fetch_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
+@patch("src.bookmarker.cli.main.generate_panel")
 @patch("src.bookmarker.services.summarizers.summarize_and_store_content")
-def test_summarize_content(mock_summarize_store_func, add_artifact, db_setup):
+def test_summarize_content(
+    mock_summarize_store_func, mock_generate_panel, add_artifact, db_setup
+):
+    mock_summarize_store_func.return_value = add_artifact
+    mock_generate_panel.return_value = "<Panel>"
+
     result = runner.invoke(app, ["summarize", "1"])
 
     assert result.exit_code == 0
     assert "Content summarized for artifact ID 1." in result.output
-    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup)
+    assert "<Panel>" in result.output
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup, refresh=False)
 
 
 def test_summarize_content_not_found():
@@ -170,6 +178,19 @@ def test_summarize_content_not_found():
 
     assert result.exit_code == 1
     assert "Artifact with ID 99 not found." in result.output
+
+
+@patch("src.bookmarker.services.summarizers.summarize_and_store_content")
+def test_summarize_content_summary_exists_warning(
+    mock_summarize_store_func, add_artifact, db_setup
+):
+    mock_summarize_store_func.side_effect = ContentSummaryExistsWarning()
+
+    result = runner.invoke(app, ["summarize", "1"])
+
+    assert result.exit_code == 0
+    assert "Artifact with ID 1 already has summary." in result.output
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup, refresh=False)
 
 
 @patch("src.bookmarker.services.summarizers.summarize_and_store_content")
@@ -182,7 +203,7 @@ def test_summarize_content_invalid_content_error(
 
     assert result.exit_code == 1
     assert "Artifact with ID 1 has no raw content yet." in result.output
-    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup)
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup, refresh=False)
 
 
 @patch("src.bookmarker.services.summarizers.summarize_and_store_content")
@@ -195,7 +216,7 @@ def test_summarize_content_summarize_error(
 
     assert result.exit_code == 1
     assert "Error summarizing content for artifact ID 1." in result.output
-    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup)
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup, refresh=False)
 
 
 @patch("src.bookmarker.services.summarizers.summarize_and_store_content_many")
@@ -259,7 +280,7 @@ def test_summarize_content_many_timeout(mock_summarize_store_func, db_setup):
 
 @patch("src.bookmarker.cli.main.get_repo")
 def test_show_artifact(mock_get_repo):
-    mock_artifact = Mock(
+    mock_artifact = MagicMock(
         id=1,
         title="Test Article",
         url="https://example.com",
@@ -290,7 +311,7 @@ def test_show_artifact_not_fetched(add_artifact):
 
 @patch("src.bookmarker.cli.main.get_repo")
 def test_show_artifact_not_summarized(mock_get_repo):
-    mock_artifact = Mock(
+    mock_artifact = MagicMock(
         id=1,
         title="Test Article",
         url="https://example.com",
@@ -310,6 +331,33 @@ def test_show_artifact_not_summarized(mock_get_repo):
 
 def test_show_artifact_not_found():
     result = runner.invoke(app, ["show", "99"])
+
+    assert result.exit_code == 1
+    assert "Artifact with ID 99 not found." in result.output
+
+
+@patch("src.bookmarker.cli.main.generate_panel")
+@patch("src.bookmarker.cli.main.update_tags")
+@patch("src.bookmarker.cli.main.get_repo")
+def test_tag_artifact(mock_get_repo, mock_update_tags, mock_generate_panel):
+    mock_artifact = MagicMock(id=1)
+    mock_repo = Mock()
+    mock_repo.get.return_value = mock_artifact
+    mock_get_repo.return_value = mock_repo
+    mock_generate_panel.return_value = "<Panel>"
+
+    result = runner.invoke(app, ["tag", "1", "python", "cloud"])
+
+    assert result.exit_code == 0
+    assert "Updated tags successfully for artifact 1." in result.output
+    assert "<Panel>" in result.output
+    mock_update_tags.assert_called_once_with(
+        mock_repo, 1, ["python", "cloud"], remove=False
+    )
+
+
+def test_tag_artifact_not_found():
+    result = runner.invoke(app, ["tag", "99", "python"])
 
     assert result.exit_code == 1
     assert "Artifact with ID 99 not found." in result.output
