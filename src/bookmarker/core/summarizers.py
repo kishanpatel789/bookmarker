@@ -21,7 +21,7 @@ def register_summarizer(name: str):
 
 class ContentSummarizer(ABC):
     @abstractmethod
-    def summarize(self, content: str) -> str:
+    def summarize(self, content: str | None) -> str:
         """Summarize the given content and return the summary as a string."""
 
 
