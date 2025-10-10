@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 
-from decouple import config
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import AgentRunError, UserError
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
+from .config import config
 from .exceptions import ContentSummaryError, InvalidContentError
 
 SUMMARIZER_REGISTRY = {}
@@ -31,7 +31,7 @@ class OpenAISummarizer(ContentSummarizer):
         if api_key is None:
             api_key = config("OPENAI_API_KEY")
         if model_name is None:
-            model_name = config("OPENAI_MODEL_NAME")
+            model_name = config("OPENAI_MODEL_NAME", default="gpt-5-nano")
         model = OpenAIChatModel(model_name, provider=OpenAIProvider(api_key=api_key))
         self.agent = Agent(
             model,
