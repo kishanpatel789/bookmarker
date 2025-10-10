@@ -1,7 +1,10 @@
 import logging
+from pathlib import Path
 from typing import Final
 
-from decouple import config
+from decouple import Config, RepositoryEnv
+
+config = Config(RepositoryEnv(Path.home() / ".bookmarker" / "config.env"))
 
 TIMEOUT_MULTITHREADING: Final[int] = config("TIMEOUT_MULTITHREADING", 15, cast=int)
 

@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 from typing import Sequence
 
-from decouple import config
 from sqlmodel import Session, create_engine, select
 
+from .config import config
 from .exceptions import ArtifactNotFoundError
 from .models import Artifact, SQLModel, Tag
 
