@@ -3,14 +3,14 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from typer.testing import CliRunner
 
-from src.bookmarker.cli.main import (
+from src.bookmarker.cli.main import app
+from src.bookmarker.core.database import DatabaseRepository
+from src.bookmarker.core.exceptions import (
     ContentFetchError,
     ContentSummaryError,
     ContentSummaryExistsWarning,
     InvalidContentError,
-    app,
 )
-from src.bookmarker.core.database import DatabaseRepository
 
 runner = CliRunner()
 
@@ -19,7 +19,7 @@ runner = CliRunner()
 def db_setup(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     repo = DatabaseRepository(f"sqlite:///{db_path}")
-    monkeypatch.setattr("src.bookmarker.cli.main.get_repo", lambda: repo)
+    monkeypatch.setattr("src.bookmarker.cli.helpers.get_repo", lambda: repo)
     yield repo
     repo._engine.dispose()
 
@@ -157,7 +157,7 @@ def test_fetch_content_many_timeout(mock_fetch_store_func, add_artifact, db_setu
     mock_fetch_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
-@patch("src.bookmarker.cli.main.generate_panel")
+@patch("src.bookmarker.cli.summarizers.generate_panel")
 @patch("src.bookmarker.services.summarizers.summarize_and_store_content")
 def test_summarize_content(
     mock_summarize_store_func, mock_generate_panel, add_artifact, db_setup
@@ -278,7 +278,7 @@ def test_summarize_content_many_timeout(mock_summarize_store_func, db_setup):
     mock_summarize_store_func.assert_called_once_with([1, 2, 3], repo=db_setup)
 
 
-@patch("src.bookmarker.cli.main.get_repo")
+@patch("src.bookmarker.cli.helpers.get_repo")
 def test_show_artifact(mock_get_repo):
     mock_artifact = MagicMock(
         id=1,
@@ -309,7 +309,7 @@ def test_show_artifact_not_fetched(add_artifact):
     assert "`bookmarker summarize 1`" in result.output
 
 
-@patch("src.bookmarker.cli.main.get_repo")
+@patch("src.bookmarker.cli.helpers.get_repo")
 def test_show_artifact_not_summarized(mock_get_repo):
     mock_artifact = MagicMock(
         id=1,
@@ -336,9 +336,9 @@ def test_show_artifact_not_found():
     assert "Artifact with ID 99 not found." in result.output
 
 
-@patch("src.bookmarker.cli.main.generate_panel")
-@patch("src.bookmarker.cli.main.update_tags")
-@patch("src.bookmarker.cli.main.get_repo")
+@patch("src.bookmarker.cli.base.generate_panel")
+@patch("src.bookmarker.cli.base.update_tags")
+@patch("src.bookmarker.cli.helpers.get_repo")
 def test_tag_artifact(mock_get_repo, mock_update_tags, mock_generate_panel):
     mock_artifact = MagicMock(id=1)
     mock_repo = Mock()
