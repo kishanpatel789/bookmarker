@@ -34,7 +34,7 @@ dev = [
 only-packages = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/snipster"]
+packages = ["src/bookmarker"]
 
 [tool.poe.tasks]
 test = "pytest"
