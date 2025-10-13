@@ -58,7 +58,6 @@ def test_summarize_agent_errors(mock_agent_class, exc):
     assert "Error during content summarization" in str(e.value)
 
 
-@pytest.mark.focus
 @patch("src.bookmarker.core.summarizers.Agent")
 def test_get_summarizer_returns_openai_instance(mock_agent_class, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "fake-key")

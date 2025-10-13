@@ -12,19 +12,36 @@ from ..core.models import Artifact
 
 
 class AppConfig(NamedTuple):
-    repo: DatabaseRepository
+    repo: DatabaseRepository | None
     console: Console
     error_console: Console
 
 
-def app_callback(ctx: typer.Context):
-    repo = get_repo()
-    repo.create_db_and_tables()
-    app_config = AppConfig(
-        repo=repo,
-        console=Console(),
-        error_console=Console(stderr=True, style="bold red"),
-    )
+def app_callback(ctx: typer.Context) -> None:
+    console = Console()
+    error_console = Console(stderr=True, style="bold red")
+
+    if ctx.invoked_subcommand == "init":
+        app_config = AppConfig(
+            repo=None,
+            console=console,
+            error_console=error_console,
+        )
+    else:
+        try:
+            repo = get_repo()
+            repo.create_db_and_tables()
+        except RuntimeError as e:
+            error_console.print(e)
+            console.print("Run [green]`bookmarker init`[/] to set up config file.")
+            raise typer.Exit(1)
+
+        app_config = AppConfig(
+            repo=repo,
+            console=console,
+            error_console=error_console,
+        )
+
     ctx.obj = app_config
 
 
