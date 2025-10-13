@@ -1,7 +1,8 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Final
 
-from ..core.config import TIMEOUT_MULTITHREADING
+from ..core.config import get_timeout_multithreading
 from ..core.database import DatabaseRepository
 from ..core.exceptions import ArtifactNotFoundError, ContentFetchError
 from ..core.fetchers import ContentFetcher, TrafilaturaFetcher, YouTubeFetcher
@@ -9,6 +10,7 @@ from ..core.models import Artifact, ArtifactTypeEnum
 from .base import ContentType, store_content
 
 logger = logging.getLogger(__name__)
+
 
 FETCHERS = {
     ArtifactTypeEnum.ARTICLE: TrafilaturaFetcher,
@@ -51,7 +53,8 @@ def fetch_and_store_content_many(
             future = executor.submit(fetch_and_store_content, a_id, repo)
             future_to_id[future] = a_id
         try:
-            for future in as_completed(future_to_id, timeout=TIMEOUT_MULTITHREADING):
+            timeout_multithreading: Final[int] = get_timeout_multithreading()
+            for future in as_completed(future_to_id, timeout=timeout_multithreading):
                 a_id = future_to_id[future]
                 try:
                     future.result()

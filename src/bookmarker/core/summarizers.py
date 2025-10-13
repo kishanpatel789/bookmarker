@@ -5,7 +5,7 @@ from pydantic_ai.exceptions import AgentRunError, UserError
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from .config import config
+from .config import get_config
 from .exceptions import ContentSummaryError, InvalidContentError
 
 SUMMARIZER_REGISTRY = {}
@@ -28,6 +28,7 @@ class ContentSummarizer(ABC):
 @register_summarizer("openai")
 class OpenAISummarizer(ContentSummarizer):
     def __init__(self, api_key: str | None = None, model_name: str | None = None):
+        config = get_config()
         if api_key is None:
             api_key = config("OPENAI_API_KEY")
         if model_name is None:
@@ -61,5 +62,6 @@ class AnthropicSummarizer(ContentSummarizer): ...
 
 
 def get_summarizer() -> ContentSummarizer:
+    config = get_config()
     backend = config("SUMMARIZER_BACKEND", default="openai")
     return SUMMARIZER_REGISTRY[backend]()

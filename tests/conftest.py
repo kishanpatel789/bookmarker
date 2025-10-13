@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from src.bookmarker.core.database import DatabaseRepository
@@ -9,3 +11,8 @@ def db_repo():
     repo.create_db_and_tables()
     yield repo
     repo._engine.dispose()
+
+
+@pytest.fixture(autouse=True, scope="session")
+def set_env():
+    os.environ["BOOKMARKER_ENV"] = "dev"
