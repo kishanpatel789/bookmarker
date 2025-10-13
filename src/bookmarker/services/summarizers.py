@@ -8,6 +8,7 @@ from ..core.exceptions import (
     ArtifactNotFoundError,
     ContentSummaryError,
     ContentSummaryExistsWarning,
+    InvalidAPIKeyError,
 )
 from ..core.models import Artifact
 from ..core.summarizers import ContentSummarizer, get_summarizer
@@ -35,7 +36,7 @@ def summarize_content(
     try:
         summary = summarizer.summarize(artifact.content_raw)
         return summary
-    except ContentSummaryError:
+    except (ContentSummaryError, InvalidAPIKeyError):
         logger.exception(f"Error summarizing content for artifact ID {artifact_id}")
         raise
 
@@ -72,7 +73,7 @@ def summarize_and_store_content_many(
         future_to_id = {}
         for a_id in artifact_ids:
             future = executor.submit(
-                summarize_and_store_content, a_id, repo, summarizer
+                summarize_and_store_content, a_id, repo=repo, summarizer=summarizer
             )
             future_to_id[future] = a_id
         try:

@@ -16,3 +16,7 @@ class ContentSummaryError(Exception):
 
 class ContentSummaryExistsWarning(Exception):
     pass
+
+
+class InvalidAPIKeyError(Exception):
+    pass

@@ -28,7 +28,7 @@ def fetch_content(artifact_id: int, *, repo: DatabaseRepository) -> str | None:
         content = fetcher.fetch(artifact.url)
         return content
     except ContentFetchError:
-        logger.error(f"Error fetching content for artifact ID {artifact_id}")
+        logger.exception(f"Error fetching content for artifact ID {artifact_id}")
         raise
 
 
@@ -50,7 +50,7 @@ def fetch_and_store_content_many(
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_id = {}
         for a_id in artifact_ids:
-            future = executor.submit(fetch_and_store_content, a_id, repo)
+            future = executor.submit(fetch_and_store_content, a_id, repo=repo)
             future_to_id[future] = a_id
         try:
             timeout_multithreading: Final[int] = get_timeout_multithreading()
