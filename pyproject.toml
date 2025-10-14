@@ -1,6 +1,6 @@
 [project]
 name = "bookmarker-ai"
-version = "0.1.0"
+version = "0.2.0"
 description = "A CLI tool to manage the online articles you want to read. Too much content and too little time? Bookmarker helps you pick what to read."
 readme = "README.md"
 authors = [
@@ -14,6 +14,12 @@ dependencies = [
     "trafilatura>=2.0.0",
     "typer>=0.19.2",
 ]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/kishanpatel789/bookmarker"
+Issues = "https://github.com/kishanpatel789/bookmarker/issues"
 
 [project.scripts]
 bookmarker = "bookmarker.__main__:main"
@@ -32,6 +38,9 @@ dev = [
 
 [tool.hatch.build]
 only-packages = true
+exclude = [
+    "tests"
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bookmarker"]
