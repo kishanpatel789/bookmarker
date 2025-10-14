@@ -7,7 +7,9 @@ from src.bookmarker.core.summarizers import (
     AgentRunError,
     ContentSummarizer,
     ContentSummaryError,
+    InvalidAPIKeyError,
     InvalidContentError,
+    ModelHTTPError,
     OpenAISummarizer,
     UserError,
 )
@@ -56,6 +58,38 @@ def test_summarize_agent_errors(mock_agent_class, exc):
         summarizer_instance.summarize("Some article text")
 
     assert "Error during content summarization" in str(e.value)
+
+
+@patch("src.bookmarker.core.summarizers.Agent")
+def test_summarize_agent_api_key_error(mock_agent_class):
+    mock_agent_instance = Mock()
+    mock_error = ModelHTTPError(401, "fake-model")
+    mock_error.body = {"code": "invalid_api_key"}
+    mock_agent_instance.run_sync.side_effect = mock_error
+    mock_agent_class.return_value = mock_agent_instance
+
+    summarizer_instance = OpenAISummarizer("bad-key", "fake-model")
+
+    with pytest.raises(InvalidAPIKeyError) as e:
+        summarizer_instance.summarize("Some article text")
+
+    assert "Invalid OpenAI API key" in str(e.value)
+
+
+@patch("src.bookmarker.core.summarizers.Agent")
+def test_summarize_agent_http_error(mock_agent_class):
+    mock_agent_instance = Mock()
+    mock_error = ModelHTTPError(401, "fake-model")
+    mock_error.body = {}
+    mock_agent_instance.run_sync.side_effect = mock_error
+    mock_agent_class.return_value = mock_agent_instance
+
+    summarizer_instance = OpenAISummarizer("fake-key", "fake-model")
+
+    with pytest.raises(ContentSummaryError) as e:
+        summarizer_instance.summarize("Some article text")
+
+    assert "OpenAI API HTTP error" in str(e.value)
 
 
 @patch("src.bookmarker.core.summarizers.Agent")

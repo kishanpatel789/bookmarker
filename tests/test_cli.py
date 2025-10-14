@@ -9,6 +9,7 @@ from src.bookmarker.core.exceptions import (
     ContentFetchError,
     ContentSummaryError,
     ContentSummaryExistsWarning,
+    InvalidAPIKeyError,
     InvalidContentError,
 )
 
@@ -203,6 +204,19 @@ def test_summarize_content_invalid_content_error(
 
     assert result.exit_code == 1
     assert "Artifact with ID 1 has no raw content yet." in result.output
+    mock_summarize_store_func.assert_called_once_with(1, repo=db_setup, refresh=False)
+
+
+@patch("src.bookmarker.services.summarizers.summarize_and_store_content")
+def test_summarize_content_invalid_key_error(
+    mock_summarize_store_func, add_artifact, db_setup
+):
+    mock_summarize_store_func.side_effect = InvalidAPIKeyError()
+
+    result = runner.invoke(app, ["summarize", "1"])
+
+    assert result.exit_code == 1
+    assert "Invalid API key" in result.output
     mock_summarize_store_func.assert_called_once_with(1, repo=db_setup, refresh=False)
 
 
