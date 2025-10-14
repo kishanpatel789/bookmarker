@@ -22,7 +22,7 @@ def app_callback(ctx: typer.Context) -> None:
     error_console = Console(stderr=True, style="bold red")
 
     if ctx.invoked_subcommand == "init":
-        repo = (None,)
+        repo = None
     else:
         try:
             repo = get_repo()
