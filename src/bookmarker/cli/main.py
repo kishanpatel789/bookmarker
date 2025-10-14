@@ -7,7 +7,10 @@ from .helpers import app_callback
 from .init_config import app as init_config_app
 from .summarizers import app as summarizers_app
 
-set_up_logging()
+try:
+    set_up_logging()
+except FileNotFoundError as e:
+    print(str(e))
 
 app = typer.Typer(callback=app_callback)
 
