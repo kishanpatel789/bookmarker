@@ -3,7 +3,7 @@ from typing import Sequence
 
 from sqlmodel import Session, create_engine, select
 
-from .config import config
+from .config import get_config
 from .exceptions import ArtifactNotFoundError
 from .models import Artifact, SQLModel, Tag
 
@@ -110,6 +110,11 @@ class DatabaseRepository:
 
 def get_repo() -> DatabaseRepository:
     # read env vars locally to allow test overrides for cli
+    try:
+        config = get_config()
+    except FileNotFoundError:
+        raise RuntimeError("Configuration file not found.")
+
     database_url = config("DATABASE_URL")
     debug = config("DEBUG", cast=bool, default=False)
     return DatabaseRepository(database_url=database_url, echo=debug)

@@ -12,7 +12,7 @@ app = typer.Typer(help="Initialize Bookmarker configuration")
 
 
 @app.command(name="init")
-def init_config(ctx: typer.Context):
+def init_config():
     """Initialize local configuration (database and AI summarizer)"""
     console = Console()
 

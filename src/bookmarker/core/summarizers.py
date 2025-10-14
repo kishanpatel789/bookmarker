@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 
 from pydantic_ai import Agent
-from pydantic_ai.exceptions import AgentRunError, UserError
+from pydantic_ai.exceptions import AgentRunError, ModelHTTPError, UserError
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from .config import config
-from .exceptions import ContentSummaryError, InvalidContentError
+from .config import get_config
+from .exceptions import ContentSummaryError, InvalidAPIKeyError, InvalidContentError
 
 SUMMARIZER_REGISTRY = {}
 
@@ -28,6 +28,7 @@ class ContentSummarizer(ABC):
 @register_summarizer("openai")
 class OpenAISummarizer(ContentSummarizer):
     def __init__(self, api_key: str | None = None, model_name: str | None = None):
+        config = get_config()
         if api_key is None:
             api_key = config("OPENAI_API_KEY")
         if model_name is None:
@@ -52,6 +53,12 @@ class OpenAISummarizer(ContentSummarizer):
         try:
             result = self.agent.run_sync(content)
             return result.output
+        except ModelHTTPError as e:
+            if isinstance(e.body, dict):
+                code = e.body.get("code")
+                if code == "invalid_api_key":
+                    raise InvalidAPIKeyError(f"Invalid OpenAI API key: {e}")
+            raise ContentSummaryError(f"OpenAI API HTTP error: {e}")
         except (AgentRunError, UserError) as e:
             raise ContentSummaryError(f"Error during content summarization: {e}")
 
@@ -61,5 +68,6 @@ class AnthropicSummarizer(ContentSummarizer): ...
 
 
 def get_summarizer() -> ContentSummarizer:
+    config = get_config()
     backend = config("SUMMARIZER_BACKEND", default="openai")
     return SUMMARIZER_REGISTRY[backend]()

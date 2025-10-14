@@ -1,12 +1,14 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Final
 
-from ..core.config import TIMEOUT_MULTITHREADING
+from ..core.config import get_timeout_multithreading
 from ..core.database import DatabaseRepository
 from ..core.exceptions import (
     ArtifactNotFoundError,
     ContentSummaryError,
     ContentSummaryExistsWarning,
+    InvalidAPIKeyError,
 )
 from ..core.models import Artifact
 from ..core.summarizers import ContentSummarizer, get_summarizer
@@ -34,7 +36,7 @@ def summarize_content(
     try:
         summary = summarizer.summarize(artifact.content_raw)
         return summary
-    except ContentSummaryError:
+    except (ContentSummaryError, InvalidAPIKeyError):
         logger.exception(f"Error summarizing content for artifact ID {artifact_id}")
         raise
 
@@ -65,16 +67,17 @@ def summarize_and_store_content_many(
     max_workers: int = 5,
 ) -> dict:
     summarizer = get_summarizer()
+    timeout_multithreading: Final[int] = get_timeout_multithreading()
     results = {}
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_id = {}
         for a_id in artifact_ids:
             future = executor.submit(
-                summarize_and_store_content, a_id, repo, summarizer
+                summarize_and_store_content, a_id, repo=repo, summarizer=summarizer
             )
             future_to_id[future] = a_id
         try:
-            for future in as_completed(future_to_id, timeout=TIMEOUT_MULTITHREADING):
+            for future in as_completed(future_to_id, timeout=timeout_multithreading):
                 a_id = future_to_id[future]
                 try:
                     future.result()
