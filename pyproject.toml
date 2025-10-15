@@ -1,6 +1,6 @@
 [project]
 name = "bookmarker-ai"
-version = "0.2.0"
+version = "0.3.0"
 description = "A CLI tool to manage the online articles you want to read. Too much content and too little time? Bookmarker helps you pick what to read."
 readme = "README.md"
 authors = [

@@ -37,7 +37,7 @@ def add_artifact(
         f"[green]Artifact added with ID {artifact.id}:[/] {artifact.title} - {artifact.url}"
     )
 
-    if auto:
+    if auto and artifact.id is not None:
         run_fetch_logic(ctx, artifact.id)
         run_summarize_logic(ctx, artifact.id)
 
