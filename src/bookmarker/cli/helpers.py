@@ -22,11 +22,7 @@ def app_callback(ctx: typer.Context) -> None:
     error_console = Console(stderr=True, style="bold red")
 
     if ctx.invoked_subcommand == "init":
-        app_config = AppConfig(
-            repo=None,
-            console=console,
-            error_console=error_console,
-        )
+        repo = None
     else:
         try:
             repo = get_repo()
@@ -36,11 +32,11 @@ def app_callback(ctx: typer.Context) -> None:
             console.print("Run [green]`bookmarker init`[/] to set up config file.")
             raise typer.Exit(1)
 
-        app_config = AppConfig(
-            repo=repo,
-            console=console,
-            error_console=error_console,
-        )
+    app_config = AppConfig(
+        repo=repo,
+        console=console,
+        error_console=error_console,
+    )
 
     ctx.obj = app_config
 

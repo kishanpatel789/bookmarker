@@ -1,11 +1,13 @@
 import logging
 import os
+from functools import cache
 from pathlib import Path
 
 from decouple import Config, RepositoryEnv
 
 
-def load_config() -> Config:
+@cache
+def get_config() -> Config:
     env = os.getenv("BOOKMARKER_ENV", "prod")
 
     if env == "dev":
@@ -20,16 +22,6 @@ def load_config() -> Config:
         )
 
     return Config(RepositoryEnv(config_path))
-
-
-_config: Config | None = None
-
-
-def get_config() -> Config:
-    global _config
-    if _config is None:
-        _config = load_config()
-    return _config
 
 
 def set_up_logging():
