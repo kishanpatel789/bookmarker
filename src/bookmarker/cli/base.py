@@ -11,7 +11,9 @@ from ..services.base import (
     get_or_create_artifact,
     update_tags,
 )
+from .fetchers import run_fetch_logic
 from .helpers import generate_panel, get_config
+from .summarizers import run_summarize_logic
 
 app = typer.Typer()
 
@@ -24,6 +26,7 @@ def add_artifact(
     artifact_type: Annotated[
         ArtifactTypeEnum, typer.Option(help="The type of the artifact")
     ] = ArtifactTypeEnum.ARTICLE,
+    auto: Annotated[bool, typer.Option(help="Auto fetch and summarize content")] = True,
 ):
     """Add an artifact with a title and URL."""
     config = get_config(ctx)
@@ -33,6 +36,10 @@ def add_artifact(
     config.console.print(
         f"[green]Artifact added with ID {artifact.id}:[/] {artifact.title} - {artifact.url}"
     )
+
+    if auto:
+        run_fetch_logic(ctx, artifact.id)
+        run_summarize_logic(ctx, artifact.id)
 
 
 @app.command(name="delete")

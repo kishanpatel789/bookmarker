@@ -12,14 +12,7 @@ from .helpers import get_config
 app = typer.Typer()
 
 
-@app.command(name="fetch")
-def fetch_content(
-    ctx: typer.Context,
-    artifact_id: Annotated[
-        int, typer.Argument(help="The ID of the artifact content to fetch")
-    ],
-):
-    """Fetch content for the specified artifact ID."""
+def run_fetch_logic(ctx: typer.Context, artifact_id: int) -> None:
     from ..services.fetchers import fetch_and_store_content
 
     config = get_config(ctx)
@@ -44,8 +37,19 @@ def fetch_content(
         raise typer.Exit(code=1)
     except NotImplementedError as e:
         config.error_console.print(str(e))
-        config.console.print("YouTube fetcher is on the feature roadmap.")
+        config.console.print("This fetcher is on the feature roadmap.")
         raise typer.Exit(code=1)
+
+
+@app.command(name="fetch")
+def fetch_content(
+    ctx: typer.Context,
+    artifact_id: Annotated[
+        int, typer.Argument(help="The ID of the artifact content to fetch")
+    ],
+):
+    """Fetch content for the specified artifact ID."""
+    run_fetch_logic(ctx, artifact_id)
 
 
 @app.command(name="fetch-many")
