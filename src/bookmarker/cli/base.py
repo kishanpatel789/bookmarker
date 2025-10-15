@@ -81,9 +81,9 @@ def list_artifacts(ctx: typer.Context):
                 ":white_heavy_check_mark:" if artifact.content_summary else ":x:",
                 artifact.url,
             )
-        ctx.obj.console.print(table)
+        config.console.print(table)
     else:
-        ctx.obj.error_console.print("No artifacts found.")
+        config.error_console.print("No artifacts found.")
 
 
 @app.command(name="show")
@@ -100,6 +100,32 @@ def show_artifact(
 
     panel = generate_panel(artifact)
     config.console.print(panel)
+
+
+@app.command()
+def search(
+    ctx: typer.Context,
+    term: Annotated[
+        str,
+        typer.Argument(help="Text to search title and URL of artifacts"),
+    ],
+    tag: Annotated[str | None, typer.Option(help="Filter results by tag name")] = None,
+):
+    """Search for artifacts by title, URL, and tag"""
+    config = get_config(ctx)
+    results = config.repo.search(term, tag_name=tag)
+    if results:
+        result_count = len(results)
+        if result_count > 1:
+            msg = f"[green]Found {len(results):,} artifacts.[/]"
+        else:
+            msg = f"[green]Found {len(results):,} artifact.[/]"
+        config.console.print(msg)
+        for artifact in results:
+            panel = generate_panel(artifact)
+            config.console.print(panel)
+    else:
+        config.error_console.print("No artifacts found matching the search criteria.")
 
 
 @app.command(name="tag")

@@ -134,7 +134,6 @@ def test_fetch_content_fetch_error(mock_fetch_store_func, add_artifact):
     assert "Error fetching content for artifact ID 1." in result.output
 
 
-@pytest.mark.focus
 @patch("src.bookmarker.services.fetchers.fetch_and_store_content")
 def test_fetch_content_not_implemented_error(mock_fetch_store_func, add_artifact):
     mock_fetch_store_func.side_effect = NotImplementedError()
@@ -389,6 +388,36 @@ def test_show_artifact_not_found():
 
     assert result.exit_code == 1
     assert "Artifact with ID 99 not found." in result.output
+
+
+def test_search_artifact(add_artifact, add_another_artifact):
+    result = runner.invoke(app, ["search", "Test"])
+    assert result.exit_code == 0
+    assert "Found 2 artifacts." in result.output
+    assert "Test Article" in result.output
+    assert "Test Article 2" in result.output
+
+    result = runner.invoke(app, ["search", "example2"])
+    assert result.exit_code == 0
+    assert "Found 1 artifact." in result.output
+    assert "Test Article 2" in result.output
+
+    result = runner.invoke(app, ["search", "Non-existent artifact"])
+    assert result.exit_code == 0
+    assert "No artifacts found matching the search criteria." in result.output
+
+
+def test_search_artifact_by_tag(add_artifact):
+    runner.invoke(app, ["tag", "1", "python"])
+
+    result = runner.invoke(app, ["search", "Test", "--tag", "python"])
+    assert result.exit_code == 0
+    assert "Found 1 artifact." in result.output
+    assert "Test Article" in result.output
+
+    result = runner.invoke(app, ["search", "Test", "--tag", "bogus-tag"])
+    assert result.exit_code == 0
+    assert "No artifacts found matching the search criteria." in result.output
 
 
 @patch("src.bookmarker.cli.base.generate_panel")
