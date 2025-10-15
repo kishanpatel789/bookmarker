@@ -42,6 +42,10 @@ def fetch_content(
             f"Error fetching content for artifact ID {artifact_id}."
         )
         raise typer.Exit(code=1)
+    except NotImplementedError as e:
+        config.error_console.print(str(e))
+        config.console.print("YouTube fetcher is on the feature roadmap.")
+        raise typer.Exit(code=1)
 
 
 @app.command(name="fetch-many")

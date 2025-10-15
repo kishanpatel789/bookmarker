@@ -36,4 +36,7 @@ class TrafilaturaFetcher(ContentFetcher):
 
 
 class YouTubeFetcher(ContentFetcher):
-    def fetch(self, url: str) -> str | None: ...
+    def fetch(self, url: str) -> str | None:
+        raise NotImplementedError(
+            "YouTube fetcher is not implemented yet. Cannot fetch content."
+        )
