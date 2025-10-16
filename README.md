@@ -54,7 +54,7 @@ The quickest way to get started is running `bookmarker add` with an article titl
 
 ![bookmarker add command](./images/bookmarker_add.png)
 
-Run the `bookmarker --help` to see the full list of commands:
+Run `bookmarker --help` to see the full list of commands:
 
 ```
 (bookmarker) $ bookmarker --help
@@ -84,7 +84,9 @@ Run the `bookmarker --help` to see the full list of commands:
 
 When stored in the database, an artifact (e.g. article) has an ID. The ID is needed to perform standard CRUD operations. If the ID is not known, run the `search` or `list` commands to find the target artifact.
 
-The raw content of an artifact can be manually retrieved using the `fetch` command. Running `summarize` will send the raw content to the selected OpenAI model to summarize the article. Both the raw and summarized content are stored in the database for local retrieval.
+The raw content of an artifact can be manually retrieved using the `fetch` command. Running `summarize` will send the raw content to the selected OpenAI model to summarize the artifact. Both the raw and summarized content are stored in the database for local retrieval.
+
+The corresponding `fetch-many` and `summarize-many` commands use multithreading to process multiple artifacts concurrently.
 
 The full CLI documentation can be seen in [docs.md](./docs.md).
 
