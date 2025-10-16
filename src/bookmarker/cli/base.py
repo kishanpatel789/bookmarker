@@ -115,11 +115,7 @@ def search(
     config = get_config(ctx)
     results = config.repo.search(term, tag_name=tag)
     if results:
-        result_count = len(results)
-        if result_count > 1:
-            msg = f"[green]Found {len(results):,} artifacts.[/]"
-        else:
-            msg = f"[green]Found {len(results):,} artifact.[/]"
+        msg = f"Found {len(results):,} artifact{'s' if len(results) != 1 else ''}."
         config.console.print(msg)
         for artifact in results:
             panel = generate_panel(artifact)
