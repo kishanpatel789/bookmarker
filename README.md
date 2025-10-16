@@ -12,7 +12,7 @@ You can...
 
 ## Installation
 
-Bookmarker-AI runs on Python 3.13+ and is hosted on PyPI. Use your favorite package manager to install the package:
+Bookmarker-AI runs on Python 3.13+ and is [hosted on PyPI](https://pypi.org/project/bookmarker-ai/). Use your favorite package manager to install the package:
 
 ```bash
 pip install bookmarker-ai
@@ -26,12 +26,12 @@ uv add bookmarker-ai
 
 ### Configure App
 
-Bookmarker-AI stores articles you add in a local SQLite database. It also requires and OpenAI API key.
+Bookmarker-AI stores articles you add in a local SQLite database. It also requires an OpenAI API key.
 
 1. Create OpenAI API key in your [OpenAI developer account](https://platform.openai.com/settings/organization/api-keys).
 2. Run `bookmarker init` in the terminal. The app will prompt you about the database and API key.
 
-```bash
+```
 $ bookmarker init
 Created directory: '/home/mufasa/.bookmarker'.
 
@@ -50,13 +50,13 @@ You can edit this file anytime to adjust your settings.
 
 ## Usage
 
-The quickest way to get started is running `bookmarker add` with an article title and URL. Bookmarker-AI will fetch the article content and sent it to OpenAI for summarization. The summary will be stored in the SQLite database and presented in the terminal.
+The quickest way to get started is running `bookmarker add` with an article title and URL. Bookmarker-AI will fetch the article content and send it to OpenAI for summarization. The summary will be stored in the SQLite database and presented in the terminal.
 
 ![bookmarker add command](./images/bookmarker_add.png)
 
 Run the `bookmarker --help` to see the full list of commands:
 
-```bash
+```
 (bookmarker) $ bookmarker --help
 
  Usage: bookmarker [OPTIONS] COMMAND [ARGS]...
