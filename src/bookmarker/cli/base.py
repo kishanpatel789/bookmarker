@@ -11,7 +11,9 @@ from ..services.base import (
     get_or_create_artifact,
     update_tags,
 )
+from .fetchers import run_fetch_logic
 from .helpers import generate_panel, get_config
+from .summarizers import run_summarize_logic
 
 app = typer.Typer()
 
@@ -24,6 +26,7 @@ def add_artifact(
     artifact_type: Annotated[
         ArtifactTypeEnum, typer.Option(help="The type of the artifact")
     ] = ArtifactTypeEnum.ARTICLE,
+    auto: Annotated[bool, typer.Option(help="Auto fetch and summarize content")] = True,
 ):
     """Add an artifact with a title and URL."""
     config = get_config(ctx)
@@ -33,6 +36,10 @@ def add_artifact(
     config.console.print(
         f"[green]Artifact added with ID {artifact.id}:[/] {artifact.title} - {artifact.url}"
     )
+
+    if auto and artifact.id is not None:
+        run_fetch_logic(ctx, artifact.id)
+        run_summarize_logic(ctx, artifact.id)
 
 
 @app.command(name="delete")
@@ -74,9 +81,9 @@ def list_artifacts(ctx: typer.Context):
                 ":white_heavy_check_mark:" if artifact.content_summary else ":x:",
                 artifact.url,
             )
-        ctx.obj.console.print(table)
+        config.console.print(table)
     else:
-        ctx.obj.error_console.print("No artifacts found.")
+        config.error_console.print("No artifacts found.")
 
 
 @app.command(name="show")
@@ -93,6 +100,28 @@ def show_artifact(
 
     panel = generate_panel(artifact)
     config.console.print(panel)
+
+
+@app.command()
+def search(
+    ctx: typer.Context,
+    term: Annotated[
+        str,
+        typer.Argument(help="Text to search title and URL of artifacts"),
+    ],
+    tag: Annotated[str | None, typer.Option(help="Filter results by tag name")] = None,
+):
+    """Search for artifacts by title, URL, and tag"""
+    config = get_config(ctx)
+    results = config.repo.search(term, tag_name=tag)
+    if results:
+        msg = f"Found {len(results):,} artifact{'s' if len(results) != 1 else ''}."
+        config.console.print(msg)
+        for artifact in results:
+            panel = generate_panel(artifact)
+            config.console.print(panel)
+    else:
+        config.error_console.print("No artifacts found matching the search criteria.")
 
 
 @app.command(name="tag")

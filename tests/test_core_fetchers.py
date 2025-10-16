@@ -6,6 +6,7 @@ from src.bookmarker.core.exceptions import ContentFetchError
 from src.bookmarker.core.fetchers import (
     ContentFetcher,
     TrafilaturaFetcher,
+    YouTubeFetcher,
 )
 
 
@@ -48,3 +49,11 @@ def test_trafilaturafetcher_parse_content_failure(mock_extract):
     with pytest.raises(ContentFetchError) as excinfo:
         fetcher.fetch("https://example.com")
     assert "Failed to parse content from URL" in str(excinfo.value)
+
+
+@pytest.mark.focus
+def test_youtubefetcher_not_implemented_error():
+    fetcher = YouTubeFetcher()
+
+    with pytest.raises(NotImplementedError):
+        fetcher.fetch("https://example.com")

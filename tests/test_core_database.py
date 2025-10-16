@@ -127,6 +127,28 @@ def test_store_content_summary_not_found(db_repo, add_article):
         db_repo.store_content_summary(99, "Test summary")
 
 
+def test_search_snippet(db_repo, add_article, add_another_article):
+    results = db_repo.search("Test")
+    assert len(results) == 2
+
+    results = db_repo.search("test2")
+    assert len(results) == 1
+
+    results = db_repo.search("Non-existent artifact")
+    assert len(results) == 0
+
+
+def test_search_snippet_by_tag(db_repo, add_article, add_another_article):
+    results = db_repo.search("", tag_name="python")
+    assert len(results) == 1
+
+    results = db_repo.search("Test", tag_name="python")
+    assert len(results) == 1
+
+    results = db_repo.search("", tag_name="fake-tag")
+    assert len(results) == 0
+
+
 def test_add_tag(db_repo, add_another_article):
     tag1 = Tag(name="Test Tag")
     tag2 = Tag(name="Test Tag 2")

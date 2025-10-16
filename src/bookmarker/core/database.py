@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Sequence
 
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, create_engine, or_, select
 
 from .config import get_config
 from .exceptions import ArtifactNotFoundError
@@ -106,6 +106,25 @@ class DatabaseRepository:
         artifact.tags = updated_tags
         self._store_artifact(artifact)
         return artifact
+
+    def search(
+        self,
+        term: str,
+        tag_name: str | None = None,
+    ) -> Sequence[Artifact]:
+        results = []
+        term_lower = term.lower()
+        with Session(self._engine) as session:
+            query = select(Artifact).where(
+                or_(
+                    Artifact.title.ilike(f"%{term_lower}%"),
+                    Artifact.url.ilike(f"%{term_lower}%"),
+                )
+            )
+            if tag_name is not None:
+                query = query.where(Artifact.tags.any(Tag.name == tag_name))
+            results = session.exec(query).all()
+        return results
 
 
 def get_repo() -> DatabaseRepository:

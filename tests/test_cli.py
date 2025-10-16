@@ -27,13 +27,17 @@ def db_setup(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def add_artifact():
-    result = runner.invoke(app, ["add", "Test Article", "https://example.com"])
+    result = runner.invoke(
+        app, ["add", "Test Article", "https://example.com", "--no-auto"]
+    )
     return result
 
 
 @pytest.fixture()
 def add_another_artifact():
-    result = runner.invoke(app, ["add", "Test Article 2", "https://example2.com"])
+    result = runner.invoke(
+        app, ["add", "Test Article 2", "https://example2.com", "--no-auto"]
+    )
     return result
 
 
@@ -44,6 +48,32 @@ def test_add_artifact(add_artifact):
     assert "Artifact added with ID" in result.output
     assert "Test Article" in result.output
     assert "https://example.com" in result.output
+
+
+@patch("src.bookmarker.cli.base.run_summarize_logic")
+@patch("src.bookmarker.cli.base.run_fetch_logic")
+def test_add_artifact_auto_true_triggers_fetch_and_summarize(
+    mock_fetch_logic, mock_summarize_logic
+):
+    result = runner.invoke(app, ["add", "Test Article", "https://example.com"])
+
+    assert result.exit_code == 0
+    mock_fetch_logic.assert_called_once()
+    mock_summarize_logic.assert_called_once()
+
+
+@patch("src.bookmarker.cli.base.run_summarize_logic")
+@patch("src.bookmarker.cli.base.run_fetch_logic")
+def test_add_artifact_auto_false_skips_fetch_and_summarize(
+    mock_fetch_logic, mock_summarize_logic
+):
+    result = runner.invoke(
+        app, ["add", "Test Article", "https://example.com", "--no-auto"]
+    )
+
+    assert result.exit_code == 0
+    mock_fetch_logic.assert_not_called()
+    mock_summarize_logic.assert_not_called()
 
 
 def test_delete_artifact(add_artifact):
@@ -102,6 +132,16 @@ def test_fetch_content_fetch_error(mock_fetch_store_func, add_artifact):
 
     assert result.exit_code == 1
     assert "Error fetching content for artifact ID 1." in result.output
+
+
+@patch("src.bookmarker.services.fetchers.fetch_and_store_content")
+def test_fetch_content_not_implemented_error(mock_fetch_store_func, add_artifact):
+    mock_fetch_store_func.side_effect = NotImplementedError()
+
+    result = runner.invoke(app, ["fetch", "1"])
+
+    assert result.exit_code == 1
+    assert "This fetcher is on the feature roadmap." in result.output
 
 
 @patch("src.bookmarker.services.fetchers.fetch_and_store_content_many")
@@ -348,6 +388,36 @@ def test_show_artifact_not_found():
 
     assert result.exit_code == 1
     assert "Artifact with ID 99 not found." in result.output
+
+
+def test_search_artifact(add_artifact, add_another_artifact):
+    result = runner.invoke(app, ["search", "Test"])
+    assert result.exit_code == 0
+    assert "Found 2 artifacts." in result.output
+    assert "Test Article" in result.output
+    assert "Test Article 2" in result.output
+
+    result = runner.invoke(app, ["search", "example2"])
+    assert result.exit_code == 0
+    assert "Found 1 artifact." in result.output
+    assert "Test Article 2" in result.output
+
+    result = runner.invoke(app, ["search", "Non-existent artifact"])
+    assert result.exit_code == 0
+    assert "No artifacts found matching the search criteria." in result.output
+
+
+def test_search_artifact_by_tag(add_artifact):
+    runner.invoke(app, ["tag", "1", "python"])
+
+    result = runner.invoke(app, ["search", "Test", "--tag", "python"])
+    assert result.exit_code == 0
+    assert "Found 1 artifact." in result.output
+    assert "Test Article" in result.output
+
+    result = runner.invoke(app, ["search", "Test", "--tag", "bogus-tag"])
+    assert result.exit_code == 0
+    assert "No artifacts found matching the search criteria." in result.output
 
 
 @patch("src.bookmarker.cli.base.generate_panel")

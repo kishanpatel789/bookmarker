@@ -15,15 +15,9 @@ from .helpers import generate_panel, get_config
 app = typer.Typer()
 
 
-@app.command(name="summarize")
-def summarize_content(
-    ctx: typer.Context,
-    artifact_id: Annotated[
-        int, typer.Argument(help="The ID of the artifact content to summarize")
-    ],
-    refresh: Annotated[bool, typer.Option(help="Force summary refresh")] = False,
-):
-    """Summarize content for the specified artifact ID."""
+def run_summarize_logic(
+    ctx: typer.Context, artifact_id: int, refresh: bool = False
+) -> None:
     from ..services.summarizers import summarize_and_store_content
 
     config = get_config(ctx)
@@ -65,6 +59,18 @@ def summarize_content(
             f"Error summarizing content for artifact ID {artifact_id}."
         )
         raise typer.Exit(code=1)
+
+
+@app.command(name="summarize")
+def summarize_content(
+    ctx: typer.Context,
+    artifact_id: Annotated[
+        int, typer.Argument(help="The ID of the artifact content to summarize")
+    ],
+    refresh: Annotated[bool, typer.Option(help="Force summary refresh")] = False,
+):
+    """Summarize content for the specified artifact ID."""
+    run_summarize_logic(ctx, artifact_id, refresh)
 
 
 @app.command(name="summarize-many")
