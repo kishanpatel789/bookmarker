@@ -24,6 +24,12 @@ OR
 uv add bookmarker-ai
 ```
 
+Alternatively, you can use [uv tools](https://docs.astral.sh/uv/guides/tools/) to run Bookmarker-AI in a temporary isolated environment:
+
+```bash
+uvx --from bookmarker-ai bookmarker
+```
+
 ### Configure App
 
 Bookmarker-AI stores articles you add in a local SQLite database. It also requires an OpenAI API key.
